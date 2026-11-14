@@ -75,7 +75,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@Req() req: AuthenticatedRequest): Promise<AuthUser> {
-    return this.auth.me(req.user.id);
+    return this.auth.me(req.user!.id);
   }
 
   private respond(res: Response, result: AuthResult) {

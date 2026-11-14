@@ -1,18 +1,47 @@
 <script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
+import { ApiError } from '~/utils/api'
+import { safeRedirect } from '~/utils/redirect'
+
+const auth = useAuthStore()
+const route = useRoute()
+
+// ログイン済みならログイン画面は見せない
+if (auth.isLoggedIn) await navigateTo(safeRedirect(route.query.redirect), { replace: true })
+
 const mode = ref<'login' | 'register'>('login')
 const email = ref('')
 const password = ref('')
 const displayName = ref('')
-const errors = ref<Record<string, string>>({})
-const done = ref(false)
+const fieldErrors = ref<Record<string, string[]>>({})
+const formError = ref('')
+const submitting = ref(false)
 
-function submit() {
-  const e: Record<string, string> = {}
-  if (!/^\S+@\S+\.\S+$/.test(email.value)) e.email = 'メールアドレスの形式で入力してください。'
-  if (password.value.length < 8) e.password = 'パスワードは 8 文字以上で入力してください。'
-  if (mode.value === 'register' && !displayName.value.trim()) e.displayName = '表示名を入力してください。'
-  errors.value = e
-  done.value = Object.keys(e).length === 0
+function switchMode(m: 'login' | 'register') {
+  mode.value = m
+  fieldErrors.value = {}
+  formError.value = ''
+}
+
+async function submit() {
+  fieldErrors.value = {}
+  formError.value = ''
+  submitting.value = true
+  try {
+    if (mode.value === 'login') await auth.login(email.value, password.value)
+    else await auth.register(displayName.value, email.value, password.value)
+    await navigateTo(safeRedirect(route.query.redirect))
+  } catch (e) {
+    if (e instanceof ApiError) {
+      fieldErrors.value = e.fieldErrors ?? {}
+      // 項目ごとのエラーがなければ、画面上部にまとめて表示する
+      if (!e.fieldErrors) formError.value = e.message
+    } else {
+      formError.value = 'エラーが発生しました。'
+    }
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -25,7 +54,7 @@ function submit() {
         type="button"
         class="flex-1 py-2"
         :class="mode === m ? 'border-b-2 border-sky-600 font-semibold text-sky-700' : 'text-gray-500'"
-        @click="((mode = m), (errors = {}), (done = false))"
+        @click="switchMode(m)"
       >
         {{ m === 'login' ? 'ログイン' : '新規登録' }}
       </button>
@@ -34,23 +63,40 @@ function submit() {
     <form class="space-y-3" novalidate @submit.prevent="submit">
       <label v-if="mode === 'register'" class="block space-y-1 text-sm">
         <span>表示名</span>
-        <input v-model="displayName" class="w-full rounded border border-gray-300 bg-white px-3 py-2" >
-        <span v-if="errors.displayName" class="text-red-600">{{ errors.displayName }}</span>
+        <input v-model="displayName" class="w-full rounded border border-gray-300 bg-white px-3 py-2" data-testid="name" >
+        <span v-for="msg in fieldErrors.name" :key="msg" class="block text-red-600">{{ msg }}</span>
       </label>
       <label class="block space-y-1 text-sm">
         <span>メールアドレス</span>
-        <input v-model="email" type="email" class="w-full rounded border border-gray-300 bg-white px-3 py-2" >
-        <span v-if="errors.email" class="text-red-600">{{ errors.email }}</span>
+        <input
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          class="w-full rounded border border-gray-300 bg-white px-3 py-2"
+          data-testid="email"
+        >
+        <span v-for="msg in fieldErrors.email" :key="msg" class="block text-red-600">{{ msg }}</span>
       </label>
       <label class="block space-y-1 text-sm">
         <span>パスワード</span>
-        <input v-model="password" type="password" class="w-full rounded border border-gray-300 bg-white px-3 py-2" >
-        <span v-if="errors.password" class="text-red-600">{{ errors.password }}</span>
+        <input
+          v-model="password"
+          type="password"
+          :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+          class="w-full rounded border border-gray-300 bg-white px-3 py-2"
+          data-testid="password"
+        >
+        <span v-for="msg in fieldErrors.password" :key="msg" class="block text-red-600">{{ msg }}</span>
       </label>
-      <p v-if="done" class="rounded bg-emerald-50 p-2 text-sm text-emerald-800" role="status">
-        {{ mode === 'login' ? 'ログインしました' : '登録しました' }}(モックのため実際には処理されません)。
+      <p v-if="formError" class="rounded bg-red-50 p-2 text-sm text-red-700" role="alert" data-testid="form-error">
+        {{ formError }}
       </p>
-      <button type="submit" class="w-full rounded bg-sky-600 py-2 text-sm text-white">
+      <button
+        type="submit"
+        class="w-full rounded bg-sky-600 py-2 text-sm text-white disabled:bg-gray-300"
+        :disabled="submitting"
+        data-testid="submit"
+      >
         {{ mode === 'login' ? 'ログイン' : '登録する' }}
       </button>
     </form>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { findSpot } from '~/utils/mockData'
 
+definePageMeta({ middleware: 'auth' })
+
 // モック: 自分の投稿(江ノ島)は自動で訪問済み
 const tab = ref<'visited' | 'want'>('visited')
 const visited = ref([6, 1].map((id) => findSpot(id)!))

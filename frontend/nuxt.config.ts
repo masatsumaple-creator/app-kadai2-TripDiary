@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   ssr: false,
   // バックエンド(3000)と衝突しないよう固定する
   devServer: { port: 5173 },
-  modules: ['@nuxt/eslint'],
+  modules: ['@nuxt/eslint', '@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],

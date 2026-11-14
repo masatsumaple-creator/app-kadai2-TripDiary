@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { findSpot } from '~/utils/mockData'
 
+definePageMeta({ middleware: 'auth' })
+
 const spot = findSpot(Number(useRoute().params.id))
 </script>
 

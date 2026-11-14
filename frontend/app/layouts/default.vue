@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
+
 const route = useRoute()
 const nav = [
   { to: '/', label: '新着', icon: '🏠' },
@@ -11,6 +13,15 @@ const mobileOnly = [
   { to: '/users/5', label: 'プロフィール', icon: '👤' },
 ]
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
+
+const auth = useAuthStore()
+// ログイン済みのときだけ、マイリスト・プロフィールを下部タブに出す
+const tabs = computed(() => (auth.isLoggedIn ? [...nav, ...mobileOnly] : nav))
+
+async function logout() {
+  await auth.logout()
+  await navigateTo('/')
+}
 </script>
 
 <template>
@@ -29,11 +40,19 @@ const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.s
           </NuxtLink>
         </nav>
         <div class="ml-auto flex items-center gap-3 text-sm">
-          <NuxtLink to="/me/list" class="hidden text-gray-600 md:inline">マイリスト</NuxtLink>
-          <NuxtLink to="/users/5" class="hidden text-gray-600 md:inline">プロフィール</NuxtLink>
-          <NuxtLink to="/login" class="text-gray-600">ログイン</NuxtLink>
-          <NuxtLink to="/spots/new" class="rounded bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-700">
-            投稿する
+          <template v-if="auth.user">
+            <NuxtLink to="/me/list" class="hidden text-gray-600 md:inline">マイリスト</NuxtLink>
+            <NuxtLink to="/users/5" class="hidden text-gray-600 md:inline">プロフィール</NuxtLink>
+            <span class="hidden max-w-24 truncate text-gray-500 md:inline" data-testid="user-name">
+              {{ auth.user.name }}
+            </span>
+            <button type="button" class="text-gray-600" data-testid="logout" @click="logout">ログアウト</button>
+            <NuxtLink to="/spots/new" class="rounded bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-700">
+              投稿する
+            </NuxtLink>
+          </template>
+          <NuxtLink v-else to="/login" class="rounded bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-700">
+            ログイン
           </NuxtLink>
         </div>
       </div>
@@ -43,7 +62,7 @@ const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.s
     </main>
     <nav class="fixed inset-x-0 bottom-0 flex border-t border-gray-200 bg-white md:hidden">
       <NuxtLink
-        v-for="n in [...nav, ...mobileOnly]"
+        v-for="n in tabs"
         :key="n.to"
         :to="n.to"
         class="flex flex-1 flex-col items-center py-2 text-xs"

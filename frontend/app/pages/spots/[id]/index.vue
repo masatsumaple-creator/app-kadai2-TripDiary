@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { findSpot, visibilityLabels } from '~/utils/mockData'
+import { findSpot, userIdByName, visibilityLabels } from '~/utils/mockData'
 
 const route = useRoute()
 const spot = findSpot(Number(route.params.id))
@@ -46,7 +46,10 @@ function addComment() {
         <span v-for="a in spot.areas" :key="a" class="rounded bg-sky-100 px-2 py-0.5 text-sky-800">{{ a }}</span>
         <span class="rounded bg-amber-100 px-2 py-0.5 text-amber-800">{{ visibilityLabels[spot.visibility] }}</span>
       </p>
-      <p class="mt-1 text-sm text-gray-500">投稿者: {{ spot.author }}</p>
+      <p class="mt-1 text-sm text-gray-500">
+        投稿者:
+        <NuxtLink :to="`/users/${userIdByName(spot.author)}`" class="text-sky-700">{{ spot.author }}</NuxtLink>
+      </p>
     </div>
 
     <p class="whitespace-pre-wrap">{{ spot.note }}</p>

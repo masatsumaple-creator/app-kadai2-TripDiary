@@ -11,6 +11,7 @@ const selected = computed(() => (selectedId.value ? findSpot(selectedId.value) :
 
 <template>
   <section class="space-y-4">
+    <MockNotice />
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold">地図</h1>
       <AreaFilter v-model="area" />
@@ -18,7 +19,7 @@ const selected = computed(() => (selectedId.value ? findSpot(selectedId.value) :
     <SpotMap :spots="spots" :selected-id="selectedId" class="h-[60vh]" @select="selectedId = $event" />
     <NuxtLink
       v-if="selected"
-      :to="`/spots/${selected.id}`"
+      :to="`/mock/spots/${selected.id}`"
       class="block rounded-lg border border-gray-200 bg-white p-3"
       data-testid="map-summary"
     >

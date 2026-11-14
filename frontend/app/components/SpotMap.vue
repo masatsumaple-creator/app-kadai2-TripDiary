@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { MockSpot } from '~/utils/mockData'
+import type { MapPoint } from '~/utils/spots'
 
 // モック用のダミー地図。緯度経度を日本周辺の範囲に割り付けてピンを置く
-const props = defineProps<{ spots: MockSpot[]; selectedId?: number }>()
+const props = defineProps<{ spots: MapPoint[]; selectedId?: number }>()
 const emit = defineEmits<{ select: [id: number] }>()
 
 const BOUNDS = { latMin: 24, latMax: 46, lngMin: 122, lngMax: 147 }
 const single = computed(() => props.spots.length === 1)
 
-function pos(s: MockSpot) {
+function pos(s: MapPoint) {
   if (single.value) return { left: '50%', top: '50%' }
   const x = (s.lng - BOUNDS.lngMin) / (BOUNDS.lngMax - BOUNDS.lngMin)
   const y = 1 - (s.lat - BOUNDS.latMin) / (BOUNDS.latMax - BOUNDS.latMin)

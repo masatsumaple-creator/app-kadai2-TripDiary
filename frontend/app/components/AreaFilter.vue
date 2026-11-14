@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { prefectures } from '~/utils/mockData'
+import { prefectures } from '~/utils/spotMeta'
 
 const model = defineModel<string>({ default: '' })
 </script>

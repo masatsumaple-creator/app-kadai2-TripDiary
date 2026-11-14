@@ -1,0 +1,2 @@
+# コンテナ内(Linux)で実行するシェルスクリプトは、Windows でも改行を LF に保つ
+*.sh text eol=lf

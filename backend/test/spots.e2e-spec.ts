@@ -307,6 +307,176 @@ describe('Spots (e2e)', () => {
     });
   });
 
+  describe('GET /api/spots(一覧)', () => {
+    // この describe 専用のエリア。他のテストの投稿と混ざらないので、結果を厳密に検証できる
+    const A = '島根県';
+    const B = '鳥取県';
+    const ids: Record<string, number> = {};
+
+    beforeAll(async () => {
+      // 作成順(ID の昇順)
+      ids.pubA = await createSpot(owner, { areas: [A], visibility: 'public' });
+      ids.folA = await createSpot(owner, {
+        areas: [A],
+        visibility: 'followers',
+      });
+      ids.privA = await createSpot(owner, {
+        areas: [A],
+        visibility: 'private',
+      });
+      ids.pubB = await createSpot(owner, { areas: [B], visibility: 'public' });
+      ids.otherPubA = await createSpot(other, {
+        areas: [A],
+        visibility: 'public',
+      });
+      ids.otherPrivA = await createSpot(other, {
+        areas: [A],
+        visibility: 'private',
+      });
+      ids.multi = await createSpot(owner, {
+        areas: [A, B],
+        visibility: 'public',
+      });
+    });
+
+    const list = (query: string, user?: TestUser) => {
+      const r = request(app.getHttpServer()).get(`/api/spots${query}`);
+      return user ? r.set('Authorization', bearer(user)) : r;
+    };
+    const idsOf = async (query: string, user?: TestUser) =>
+      (
+        (await list(query, user).expect(200)).body.items as { id: number }[]
+      ).map((i) => i.id);
+    const names = (keys: string[]) => keys.map((k) => ids[k]);
+
+    it('新着順(新しい順)で返し、公開範囲に合うものだけを含む', async () => {
+      const q = `?area=${encodeURIComponent(A)}`;
+      // 未ログイン: 公開のみ
+      expect(await idsOf(q)).toEqual(names(['multi', 'otherPubA', 'pubA']));
+      // 無関係なログイン済みユーザー: 公開 + 自分の投稿(非公開を含む)
+      expect(await idsOf(q, other)).toEqual(
+        names(['multi', 'otherPrivA', 'otherPubA', 'pubA']),
+      );
+      // フォロワー: 公開 + フォローしている相手のフォロワー限定
+      expect(await idsOf(q, follower)).toEqual(
+        names(['multi', 'otherPubA', 'folA', 'pubA']),
+      );
+      // 本人: 自分の投稿はすべて(他人の非公開は含まない)
+      expect(await idsOf(q, owner)).toEqual(
+        names(['multi', 'otherPubA', 'privA', 'folA', 'pubA']),
+      );
+    });
+
+    it('エリアタグで絞り込める(複数タグの投稿はどちらでも見つかる)', async () => {
+      const b = `?area=${encodeURIComponent(B)}`;
+      expect(await idsOf(b)).toEqual(names(['multi', 'pubB']));
+    });
+
+    it('絞り込みなしでも、閲覧できない投稿は含まれない', async () => {
+      const anon = await idsOf('?limit=50');
+      expect(anon).toEqual(expect.arrayContaining(names(['pubB', 'multi'])));
+      for (const hidden of ['folA', 'privA', 'otherPrivA']) {
+        expect(anon).not.toContain(ids[hidden]);
+      }
+      const asOther = await idsOf('?limit=50', other);
+      expect(asOther).not.toContain(ids.privA);
+      expect(asOther).not.toContain(ids.folA);
+    });
+
+    it('カーソルでページ送りでき、重複も抜けもない', async () => {
+      const q = `area=${encodeURIComponent(A)}`;
+      const page1 = (await list(`?${q}&limit=2`, owner).expect(200)).body;
+      expect(page1.items.map((i: { id: number }) => i.id)).toEqual(
+        names(['multi', 'otherPubA']),
+      );
+      expect(page1.nextCursor).toBe(ids.otherPubA);
+
+      const page2 = (
+        await list(`?${q}&limit=2&cursor=${page1.nextCursor}`, owner).expect(
+          200,
+        )
+      ).body;
+      expect(page2.items.map((i: { id: number }) => i.id)).toEqual(
+        names(['privA', 'folA']),
+      );
+
+      const page3 = (
+        await list(`?${q}&limit=2&cursor=${page2.nextCursor}`, owner).expect(
+          200,
+        )
+      ).body;
+      expect(page3.items.map((i: { id: number }) => i.id)).toEqual(
+        names(['pubA']),
+      );
+      expect(page3.nextCursor).toBeNull();
+    });
+
+    it('ちょうど件数分のときは nextCursor が null', async () => {
+      const res = await list(
+        `?area=${encodeURIComponent(A)}&limit=5`,
+        owner,
+      ).expect(200);
+      expect(res.body.items).toHaveLength(5);
+      expect(res.body.nextCursor).toBeNull();
+    });
+
+    it('limit を省略すると 20 件までで返す', async () => {
+      const res = await list('').expect(200);
+      expect(res.body.items.length).toBeLessThanOrEqual(20);
+    });
+
+    it('一覧には要約だけを含める(感想・住所・緯度経度は含まない)', async () => {
+      const res = await list(`?area=${encodeURIComponent(B)}`, owner).expect(
+        200,
+      );
+      expect(res.body.items[0]).toEqual({
+        id: ids.multi,
+        name: '清水寺',
+        // エリアは都道府県の並び順(JIS コード順: 鳥取県 31 → 島根県 32)で返す
+        areas: [B, A],
+        visibility: 'public',
+        author: { id: owner.id, name: 'user-owner' },
+        isMine: true,
+        createdAt: expect.any(String),
+      });
+    });
+
+    it('該当がなければ空', async () => {
+      const res = await list(`?area=${encodeURIComponent('高知県')}`).expect(
+        200,
+      );
+      expect(res.body).toEqual({ items: [], nextCursor: null });
+    });
+
+    it('area が空文字なら絞り込まない', async () => {
+      expect(await idsOf('?area=&limit=50')).toContain(ids.pubB);
+    });
+
+    it.each([
+      ['存在しないエリア', '?area=ゴッサム', 'area'],
+      ['limit が 0', '?limit=0', 'limit'],
+      ['limit が上限超え', '?limit=51', 'limit'],
+      ['limit が数字でない', '?limit=abc', 'limit'],
+      ['cursor が 0', '?cursor=0', 'cursor'],
+      ['cursor が数字でない', '?cursor=abc', 'cursor'],
+    ])('クエリが不正なら 400: %s', async (_label, query, field) => {
+      const res = await list(encodeURI(query)).expect(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+      expect(res.body.fieldErrors).toHaveProperty(field);
+    });
+
+    it('想定外のクエリ(userId など)は拒否する', async () => {
+      await list(`?userId=${owner.id}`).expect(400);
+    });
+
+    it('不正なトークンは 401', async () => {
+      await request(app.getHttpServer())
+        .get('/api/spots')
+        .set('Authorization', 'Bearer invalid.token.value')
+        .expect(401);
+    });
+  });
+
   describe('DELETE /api/spots/:id', () => {
     it('本人は削除でき、削除後は 404', async () => {
       const id = await createSpot(owner);

@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { Visibility } from './dto/spot.dto.js';
 import { SpotInputDto } from './dto/spot.dto.js';
+import { DEFAULT_PAGE_SIZE, ListSpotsQueryDto } from './dto/list-spots.dto.js';
 
 const include = {
   tags: { include: { tag: true } },
@@ -39,6 +41,23 @@ export interface SpotResponse {
   updatedAt: Date;
 }
 
+// 一覧用の要約。感想・住所・緯度経度は含めない(詳細で取得する)
+export interface SpotListItem {
+  id: number;
+  name: string;
+  areas: string[];
+  visibility: Visibility;
+  author: { id: number; name: string };
+  isMine: boolean;
+  createdAt: Date;
+}
+
+export interface SpotListResponse {
+  items: SpotListItem[];
+  // 次のページがなければ null。あれば、次のリクエストの cursor に渡す
+  nextCursor: number | null;
+}
+
 const notFound = () => new ApiError(404, 'NOT_FOUND', '投稿が見つかりません。');
 
 @Injectable()
@@ -56,6 +75,46 @@ export class SpotsService {
       include,
     });
     return this.toResponse(spot, userId);
+  }
+
+  // 新着順(ID の降順)の一覧。詳細と同じ公開範囲の規則で、閲覧できる投稿だけを返す。
+  // ID は投稿順に増えるため、created_at ではなく ID をカーソルにする(同時刻でも重複・抜けが出ない)
+  async list(
+    query: ListSpotsQueryDto,
+    viewerId?: number,
+  ): Promise<SpotListResponse> {
+    const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+    if (query.area !== undefined) await this.assertAreaExists(query.area);
+
+    const viewable: Prisma.SpotWhereInput[] = [{ visibility: 'public' }];
+    if (viewerId !== undefined) {
+      viewable.push(
+        { userId: viewerId },
+        {
+          visibility: 'followers',
+          user: { followers: { some: { followerId: viewerId } } },
+        },
+      );
+    }
+    const rows = (await this.prisma.spot.findMany({
+      where: {
+        AND: [
+          { OR: viewable },
+          query.area ? { tags: { some: { tag: { name: query.area } } } } : {},
+          query.cursor ? { id: { lt: query.cursor } } : {},
+        ],
+      },
+      include,
+      orderBy: { id: 'desc' },
+      // 次のページがあるかを判定するため 1 件多く取る
+      take: limit + 1,
+    })) as SpotRecord[];
+
+    const page = rows.slice(0, limit);
+    return {
+      items: page.map((s) => this.toListItem(s, viewerId)),
+      nextCursor: rows.length > limit ? page[page.length - 1]!.id : null,
+    };
   }
 
   async get(id: number, viewerId?: number): Promise<SpotResponse> {
@@ -136,6 +195,34 @@ export class SpotsService {
         return follow !== null;
       }
     }
+  }
+
+  private async assertAreaExists(area: string): Promise<void> {
+    const tag = await this.prisma.areaTag.findUnique({ where: { name: area } });
+    if (!tag) {
+      throw new ApiError(
+        400,
+        'VALIDATION_ERROR',
+        '入力内容に誤りがあります。',
+        {
+          area: [`存在しないエリアタグです: ${area}`],
+        },
+      );
+    }
+  }
+
+  private toListItem(spot: SpotRecord, viewerId?: number): SpotListItem {
+    return {
+      id: spot.id,
+      name: spot.name,
+      areas: [...spot.tags]
+        .sort((a, b) => a.tagId - b.tagId)
+        .map((t) => t.tag.name),
+      visibility: spot.visibility,
+      author: spot.user,
+      isMine: viewerId !== undefined && spot.userId === viewerId,
+      createdAt: spot.createdAt,
+    };
   }
 
   // 都道府県名から ID を引く。マスタにない名前は入力エラーにする

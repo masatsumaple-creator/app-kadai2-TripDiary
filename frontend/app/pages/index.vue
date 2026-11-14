@@ -1,7 +1,27 @@
+<script setup lang="ts">
+import { mockSpots } from '~/utils/mockData'
+
+const area = ref('')
+// モック: 公開と自分の投稿を表示(フォロワー限定はフォロー中でのみ見える想定)
+const spots = computed(() =>
+  mockSpots.filter((s) => s.visibility !== 'followers' && (!area.value || s.areas.includes(area.value))),
+)
+</script>
+
 <template>
-  <main class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 p-4">
-    <h1 class="text-3xl font-bold">TripDiary</h1>
-    <p class="text-gray-600">旅行の記録を、地図と一緒に。</p>
-    <HealthStatus />
-  </main>
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold">新着</h1>
+      <AreaFilter v-model="area" />
+    </div>
+    <p v-if="!spots.length" class="py-12 text-center text-gray-500">該当する投稿がありません。</p>
+    <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <SpotCard v-for="s in spots" :key="s.id" :spot="s" />
+    </div>
+    <div class="text-center">
+      <button class="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600" type="button">
+        もっと見る
+      </button>
+    </div>
+  </section>
 </template>

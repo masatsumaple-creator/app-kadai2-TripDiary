@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { findSpot, userIdByName, visibilityLabels } from '~/utils/mockData'
+import { findNearbySpots, findSpot, userIdByName, visibilityLabels } from '~/utils/mockData'
 
 const route = useRoute()
 const spot = findSpot(Number(route.params.id))
+const nearby = spot ? findNearbySpots(spot) : []
 const liked = ref(false)
 const listState = ref<'none' | 'want' | 'visited'>('none')
 const photo = ref(0)
@@ -122,6 +123,13 @@ function addComment() {
         >
         <button class="rounded bg-sky-600 px-4 py-2 text-sm text-white" type="submit">送信</button>
       </form>
+    </section>
+
+    <section v-if="nearby.length" class="space-y-3 border-t border-gray-200 pt-4" data-testid="nearby">
+      <h2 class="font-semibold">近くのスポット</h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SpotCard v-for="s in nearby" :key="s.id" :spot="s" />
+      </div>
     </section>
   </article>
 </template>

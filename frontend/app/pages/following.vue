@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { mockSpots } from '~/utils/mockData'
 
+definePageMeta({ middleware: 'auth' })
+
 // モック: フォロー中は「けんた」「みお」とする
 const followed = ['けんた', 'みお']
 const spots = computed(() => mockSpots.filter((s) => followed.includes(s.author)))

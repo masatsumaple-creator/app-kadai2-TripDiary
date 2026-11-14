@@ -131,10 +131,65 @@ export const mockSpots: MockSpot[] = [
     photoCount: 2,
     comments: [],
   },
+  {
+    id: 7,
+    name: '熊本城',
+    note: '天守閣からの眺めが最高でした。復旧中の石垣も見学できます。',
+    address: '熊本県熊本市中央区本丸1-1',
+    lat: 32.8061,
+    lng: 130.7058,
+    areas: ['熊本県'],
+    visibility: 'public',
+    author: 'そうた',
+    likes: 15,
+    hue: 45,
+    photoCount: 4,
+    comments: [],
+  },
+  {
+    id: 8,
+    name: '黒川温泉',
+    note: '入湯手形で温泉めぐり。川沿いの露天風呂が気持ちよかったです。',
+    address: '熊本県阿蘇郡南小国町満願寺',
+    lat: 33.0643,
+    lng: 131.1431,
+    areas: ['熊本県'],
+    visibility: 'public',
+    author: 'はるか',
+    likes: 27,
+    hue: 300,
+    photoCount: 7,
+    comments: [],
+  },
+  {
+    id: 9,
+    name: '嵐山 竹林の小径',
+    note: '早朝は静かで、竹の間から光が差してとてもきれいでした。',
+    address: '京都府京都市右京区嵯峨小倉山',
+    lat: 35.0094,
+    lng: 135.6673,
+    areas: ['京都府'],
+    visibility: 'public',
+    author: 'みお',
+    likes: 20,
+    hue: 140,
+    photoCount: 5,
+    comments: [],
+  },
 ]
 
 export function findSpot(id: number) {
   return mockSpots.find((s) => s.id === id)
+}
+
+const NEARBY_LIMIT = 5
+
+// 近くのスポット: 同じエリアタグを持つ他の公開投稿を新着順(モックでは ID の降順)で最大 5 件
+export function findNearbySpots(spot: MockSpot) {
+  return mockSpots
+    .filter((s) => s.id !== spot.id && s.visibility === 'public' && s.areas.some((a) => spot.areas.includes(a)))
+    .sort((a, b) => b.id - a.id)
+    .slice(0, NEARBY_LIMIT)
 }
 
 export interface MockUser {

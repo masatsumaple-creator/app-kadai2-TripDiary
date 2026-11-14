@@ -22,6 +22,7 @@ function remove(id: number) {
 
 <template>
   <section class="space-y-4">
+    <MockNotice />
     <h1 class="text-xl font-bold">マイリスト</h1>
     <div class="flex border-b border-gray-200 text-sm">
       <button
@@ -41,7 +42,7 @@ function remove(id: number) {
     <p v-if="!items.length" class="py-12 text-center text-gray-500">まだスポットがありません。</p>
     <ul class="space-y-2">
       <li v-for="s in items" :key="s.id" class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
-        <NuxtLink :to="`/spots/${s.id}`" class="flex-1">
+        <NuxtLink :to="`/mock/spots/${s.id}`" class="flex-1">
           <p class="font-semibold">{{ s.name }}</p>
           <p class="text-xs text-gray-500">{{ s.areas.join('、') }}</p>
         </NuxtLink>

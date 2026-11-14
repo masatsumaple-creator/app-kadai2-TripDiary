@@ -17,6 +17,9 @@ model User {
   passwordHash  String         @map("password_hash") @db.VarChar(255)
   createdAt     DateTime       @default(now()) @map("created_at")
   refreshTokens RefreshToken[]
+  spots         Spot[]
+  following     Follow[]       @relation("Follower")
+  followers     Follow[]       @relation("Followee")
 
   @@map("users")
 }
@@ -32,4 +35,60 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+enum SpotVisibility {
+  public
+  followers
+  private
+}
+
+model AreaTag {
+  id    Int       @id @default(autoincrement())
+  name  String    @unique @db.VarChar(10)
+  spots SpotTag[]
+
+  @@map("area_tags")
+}
+
+model Spot {
+  id         Int            @id @default(autoincrement())
+  userId     Int            @map("user_id")
+  name       String         @db.VarChar(100)
+  review     String?        @db.Text
+  address    String?        @db.VarChar(255)
+  latitude   Float?
+  longitude  Float?
+  visibility SpotVisibility @default(public)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags       SpotTag[]
+
+  @@index([userId])
+  @@index([visibility, createdAt])
+  @@map("spots")
+}
+
+model SpotTag {
+  spotId Int     @map("spot_id")
+  tagId  Int     @map("tag_id")
+  spot   Spot    @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  tag    AreaTag @relation(fields: [tagId], references: [id])
+
+  @@id([spotId, tagId])
+  @@index([tagId])
+  @@map("spot_tags")
+}
+
+model Follow {
+  followerId Int      @map("follower_id")
+  followeeId Int      @map("followee_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  follower   User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followee   User     @relation("Followee", fields: [followeeId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followeeId])
+  @@index([followeeId])
+  @@map("follows")
 }

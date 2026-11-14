@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 同じブランチの古い実行は、新しい push で取り消す
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint, build, unit, e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tripdiary
+          MYSQL_USER: tripdiary
+          MYSQL_PASSWORD: tripdiary
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      # CI 専用のテスト用の値(本物の秘密情報ではない)
+      DATABASE_URL: mysql://tripdiary:tripdiary@127.0.0.1:3306/tripdiary
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      # Prisma Client は生成物でコミットしていないため、ここで生成する
+      - run: npx prisma generate
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: npx prisma migrate deploy
+      - run: npm run test:e2e
+
+  frontend:
+    name: Frontend (lint, typecheck, unit, generate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # .nuxt の型定義を生成する(postinstall でも実行されるが、スキップされても確実に動くよう明示する)
+      - run: npx nuxt prepare
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      # デプロイと同じ静的出力が作れることを確認する
+      - run: npm run generate

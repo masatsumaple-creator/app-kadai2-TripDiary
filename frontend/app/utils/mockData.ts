@@ -136,3 +136,26 @@ export const mockSpots: MockSpot[] = [
 export function findSpot(id: number) {
   return mockSpots.find((s) => s.id === id)
 }
+
+export interface MockUser {
+  id: number
+  name: string
+  followers: number
+  following: number
+}
+
+export const mockUsers: MockUser[] = [
+  { id: 1, name: 'はるか', followers: 120, following: 45 },
+  { id: 2, name: 'そうた', followers: 34, following: 80 },
+  { id: 3, name: 'みお', followers: 58, following: 22 },
+  { id: 4, name: 'けんた', followers: 77, following: 60 },
+  { id: 5, name: 'あなた', followers: 3, following: 4 },
+]
+
+export function findUser(id: number) {
+  return mockUsers.find((u) => u.id === id)
+}
+
+export function userIdByName(name: string) {
+  return mockUsers.find((u) => u.name === name)?.id
+}

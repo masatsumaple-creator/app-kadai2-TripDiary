@@ -5,6 +5,11 @@ const nav = [
   { to: '/following', label: 'フォロー中', icon: '👥' },
   { to: '/map', label: '地図', icon: '🗺️' },
 ]
+// スマホの下部タブにのみ出す項目(PC ではヘッダーに表示)
+const mobileOnly = [
+  { to: '/me/list', label: 'マイリスト', icon: '🔖' },
+  { to: '/users/5', label: 'プロフィール', icon: '👤' },
+]
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
 </script>
 
@@ -23,9 +28,14 @@ const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.s
             {{ n.label }}
           </NuxtLink>
         </nav>
-        <NuxtLink to="/spots/new" class="ml-auto rounded bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
-          投稿する
-        </NuxtLink>
+        <div class="ml-auto flex items-center gap-3 text-sm">
+          <NuxtLink to="/me/list" class="hidden text-gray-600 md:inline">マイリスト</NuxtLink>
+          <NuxtLink to="/users/5" class="hidden text-gray-600 md:inline">プロフィール</NuxtLink>
+          <NuxtLink to="/login" class="text-gray-600">ログイン</NuxtLink>
+          <NuxtLink to="/spots/new" class="rounded bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-700">
+            投稿する
+          </NuxtLink>
+        </div>
       </div>
     </header>
     <main class="mx-auto max-w-5xl p-4">
@@ -33,7 +43,7 @@ const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.s
     </main>
     <nav class="fixed inset-x-0 bottom-0 flex border-t border-gray-200 bg-white md:hidden">
       <NuxtLink
-        v-for="n in nav"
+        v-for="n in [...nav, ...mobileOnly]"
         :key="n.to"
         :to="n.to"
         class="flex flex-1 flex-col items-center py-2 text-xs"

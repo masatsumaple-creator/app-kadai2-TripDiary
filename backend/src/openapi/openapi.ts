@@ -50,3 +50,15 @@ export function setupSwaggerUi(app: INestApplication): void {
     jsonDocumentUrl: 'api/docs-json',
   });
 }
+
+// Swagger UI を公開するか。SWAGGER_ENABLED があれば、それに従う('true' のときだけ公開)。
+// なければ、本番(NODE_ENV=production)以外で公開する
+export function isSwaggerEnabled(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  const flag = env['SWAGGER_ENABLED'];
+  if (flag !== undefined && flag !== '') {
+    return flag === 'true';
+  }
+  return env['NODE_ENV'] !== 'production';
+}

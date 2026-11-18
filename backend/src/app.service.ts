@@ -14,6 +14,11 @@ export class HealthStatus {
   db: 'up';
 }
 
+export class LiveStatus {
+  @ApiProperty({ enum: ['ok'], description: 'アプリが動いている' })
+  status: 'ok';
+}
+
 @Injectable()
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}

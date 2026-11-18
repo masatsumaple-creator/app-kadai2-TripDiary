@@ -58,6 +58,19 @@ jobs:
       - run: npm test
       - run: npx prisma migrate deploy
       - run: npm run test:e2e
+      # 本番のコンテナイメージが、ビルドでき、DB_* の環境変数だけで起動できることを確認する
+      - name: Docker image (build and smoke test)
+        working-directory: .
+        run: |
+          docker build -t tripdiary-backend backend
+          docker run -d --name smoke --network host \
+            -e DB_HOST=127.0.0.1 -e DB_NAME=tripdiary -e DB_USER=tripdiary -e DB_PASSWORD=tripdiary \
+            -e JWT_SECRET=ci-only-jwt-secret-not-used-anywhere-else tripdiary-backend
+          for i in $(seq 1 30); do curl -sf localhost:3000/api/health/live && break; sleep 1; done
+          curl -sf localhost:3000/api/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/docs)" = 404
+          docker stop smoke
+          test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
 
   frontend:
     name: Frontend (lint, typecheck, unit, generate)

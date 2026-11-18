@@ -16,9 +16,19 @@ npm run start:dev              # http://localhost:3000(API は /api、仕様書�
 | 名前 | 内容 |
 |---|---|
 | `DATABASE_URL` | MySQL への接続先(例: `mysql://tripdiary:tripdiary@localhost:3306/tripdiary`) |
+| `DB_HOST` `DB_PORT` `DB_NAME` `DB_USER` `DB_PASSWORD` | `DATABASE_URL` の代わりに、部品で渡す(AWS の ECS 用。`DATABASE_URL` があればそちらが優先。パスワードは自動で URL エンコードする)。`DB_PORT` の既定は 3306 |
 | `JWT_SECRET` | アクセストークンの署名鍵(長いランダム文字列) |
+| `SWAGGER_ENABLED` | Swagger UI(`/api/docs`)を公開するか。`true` / `false`。未設定のときは、本番(`NODE_ENV=production`)以外で公開 |
 | `PORT` | 待ち受けポート(既定 3000) |
 | `NODE_ENV` | `production` のとき、リフレッシュトークンの Cookie に `Secure` を付ける |
+
+## コンテナイメージ(本番用)
+
+```bash
+docker build -t tripdiary-backend .      # backend/ で実行。本番は ARM64(Graviton)
+```
+
+Node 24、非 root、本番の依存と Prisma CLI だけを含む。起動は `node dist/main.js`、マイグレーションは同じイメージで `npx prisma migrate deploy` を実行する(`DB_*` の環境変数だけで動く)。SIGTERM を受けると、処理中のリクエストを終えてから止まる。ヘルスチェックは `GET /api/health/live`(DB に依存しない)。
 
 ## コマンド
 

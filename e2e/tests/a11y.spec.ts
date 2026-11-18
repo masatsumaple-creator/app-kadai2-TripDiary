@@ -77,6 +77,50 @@ test.describe('アクセシビリティ(WCAG A/AA)', () => {
     expect(await scanA11y(page)).toEqual([])
   })
 
+  test('詳細のいいね・コメント(コメント一覧・入力欄・削除ボタンあり)', async ({ page, request }) => {
+    const owner = await registerUser(request, 'a11y')
+    const fan = await registerUser(request, 'a11y')
+    const spot = await createSpot(request, owner)
+    await request.post(`/api/spots/${spot.id}/comments`, {
+      data: { body: 'こんにちは' },
+      headers: { Authorization: `Bearer ${fan.accessToken}` },
+    })
+    await signIn(page, fan)
+    await page.goto(`/spots/${spot.id}`)
+    await expect(page.getByTestId('comment')).toBeVisible()
+    await expect(page.getByTestId('comment-delete')).toBeVisible()
+    await expect(page.getByTestId('like-button')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+
+    // いいね済み(ボタンの見た目が変わる)
+    await page.getByTestId('like-button').click()
+    await expect(page.getByTestId('like-button')).toHaveAttribute('aria-pressed', 'true')
+    expect(await scanA11y(page)).toEqual([])
+  })
+
+  test('詳細のコメント欄(未ログイン: ログインへの案内)', async ({ page, request }) => {
+    const owner = await registerUser(request, 'a11y')
+    const spot = await createSpot(request, owner)
+    await page.goto(`/spots/${spot.id}`)
+    await expect(page.getByTestId('comment-login')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+  })
+
+  test('フォロー中の一覧(空の表示と、投稿のある表示)', async ({ page, request }) => {
+    const me = await registerUser(request, 'a11y')
+    const followed = await registerUser(request, 'a11y')
+    await signIn(page, me)
+    await page.goto('/following')
+    await expect(page.getByTestId('list-empty')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+
+    await createSpot(request, followed)
+    await request.post(`/api/users/${followed.id}/follow`, { headers: { Authorization: `Bearer ${me.accessToken}` } })
+    await page.goto('/following')
+    await expect(page.getByTestId('spot-card').first()).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+  })
+
   test('プロフィール(存在しないユーザー)', async ({ page }) => {
     await page.goto('/users/2147483647')
     await expect(page.getByTestId('not-found')).toBeVisible()

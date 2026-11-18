@@ -33,6 +33,11 @@ export interface Spot extends SpotListItem {
   updatedAt: string
 }
 
+export interface LikeState {
+  liked: boolean
+  likeCount: number
+}
+
 export interface SpotInput {
   name: string
   review: string | null

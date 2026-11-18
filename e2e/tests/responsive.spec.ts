@@ -127,6 +127,46 @@ test.describe('スマートフォン幅', () => {
     await expectNoHorizontalScroll(page)
   })
 
+  test('詳細のいいね・コメントが、横にはみ出さず、入力欄と送信ボタンがタブバーに隠れずに操作できる', async ({
+    page,
+    request,
+  }) => {
+    const owner = await registerUser(request, 'mobile')
+    const fan = await registerUser(request, 'mobile')
+    const spot = await createSpot(request, owner)
+    // 長い単語や URL でも、横にはみ出さない
+    await request.post(`/api/spots/${spot.id}/comments`, {
+      data: { body: 'https://example.com/' + 'a'.repeat(200) },
+      headers: { Authorization: `Bearer ${fan.accessToken}` },
+    })
+    await signIn(page, fan)
+    await page.goto(`/spots/${spot.id}`)
+    await expect(page.getByTestId('comment')).toBeVisible()
+    await expectNoHorizontalScroll(page)
+
+    await page.getByTestId('like-button').click()
+    await expect(page.getByTestId('like-button')).toHaveAttribute('aria-pressed', 'true')
+    await page.getByTestId('comment-input').scrollIntoViewIfNeeded()
+    await page.getByTestId('comment-input').fill('スマホからのコメント')
+    // 固定のタブバーに重ならずにタップできる(Playwright は、他の要素に覆われていると失敗する)
+    await page.getByTestId('comment-submit').click()
+    await expect(page.getByTestId('comment-count')).toHaveText('2')
+    await expectNoHorizontalScroll(page)
+  })
+
+  test('フォロー中の一覧が、スマートフォン幅でも横にはみ出さず、1 列で並ぶ', async ({ page, request }) => {
+    const me = await registerUser(request, 'mobile')
+    const followed = await registerUser(request, 'mobile')
+    for (let i = 0; i < 2; i++) await createSpot(request, followed, { name: uniqueName('フォロー中') })
+    await request.post(`/api/users/${followed.id}/follow`, { headers: { Authorization: `Bearer ${me.accessToken}` } })
+    await signIn(page, me)
+    await page.goto('/following')
+    await expect(page.getByTestId('spot-card')).toHaveCount(2)
+    await expectNoHorizontalScroll(page)
+    const lefts = await page.getByTestId('spot-card').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)))
+    expect(new Set(lefts).size).toBe(1)
+  })
+
   test('スマートフォン幅でも、アクセシビリティの違反がない(一覧・フォーム)', async ({ page, request }) => {
     const user = await registerUser(request, 'mobile')
     await createSpot(request, user, { areas: ['愛媛県'] })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 import { ApiError } from '~/utils/api'
+import type { ListStatus } from '~/utils/lists'
 import { visibilityLabels } from '~/utils/spotMeta'
 import {
   mergeNearby,
@@ -73,6 +74,31 @@ async function remove() {
 
 const auth = useAuthStore()
 const liking = ref(false)
+const listing = ref(false)
+const listsApi = useListsApi()
+
+// マイリストへの追加・状態の変更・削除。未ログインなら、ログインしてからこの画面へ戻す(自動では追加しない)
+async function changeList(action: () => Promise<{ status: ListStatus | null }>) {
+  if (!spot.value) return
+  if (!auth.isLoggedIn) {
+    await navigateTo({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  listing.value = true
+  error.value = ''
+  try {
+    const { status } = await action()
+    spot.value = { ...spot.value, listStatus: status }
+  } catch (e) {
+    error.value =
+      e instanceof ApiError ? e.message : 'マイリストの操作に失敗しました。'
+  } finally {
+    listing.value = false
+  }
+}
+const setList = (status: ListStatus) =>
+  changeList(() => listsApi.set(spot.value!.id, status))
+const removeFromList = () => changeList(() => listsApi.remove(spot.value!.id))
 
 // いいね/取り消しの切り替え。結果(件数と、いいね済みか)はサーバーの応答で更新する
 async function toggleLike() {
@@ -194,6 +220,13 @@ watch(id, load, { immediate: true })
           @toggle="toggleLike"
         />
       </div>
+      <ListButtons
+        :status="spot.listStatus"
+        :own="spot.isMine"
+        :pending="listing"
+        @set="setList"
+        @remove="removeFromList"
+      />
       <div v-if="spot.isMine" class="flex gap-2">
         <NuxtLink
           :to="`/spots/${spot.id}/edit`"

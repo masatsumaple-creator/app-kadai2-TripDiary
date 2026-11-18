@@ -53,6 +53,7 @@ describe('spotToForm', () => {
       latitude: null,
       longitude: null,
       liked: false,
+      listStatus: null,
       updatedAt: '2026-11-14T00:00:00.000Z',
     }
     expect(spotToForm(spot)).toEqual({
@@ -74,6 +75,7 @@ describe('spotToForm', () => {
       latitude: null,
       longitude: null,
       liked: false,
+      listStatus: null,
       updatedAt: '',
     }
     const form = spotToForm(spot)

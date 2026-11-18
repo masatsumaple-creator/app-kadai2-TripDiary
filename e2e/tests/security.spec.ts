@@ -69,6 +69,43 @@ test.describe('セキュリティ: 認証・権限(API)', () => {
     expect(ids).not.toContain(followersOnly.id)
   })
 
+  test('フォロワー限定の投稿は、フォローすると見られ、解除すると再び見られなくなる(非公開はフォローしても見えない)', async ({
+    request,
+  }) => {
+    const author = await registerUser(request, 'author')
+    const reader = await registerUser(request, 'reader')
+    // このテスト専用のエリア
+    const followersOnly = await createSpot(request, author, { areas: ['奈良県'], visibility: 'followers' })
+    const secret = await createSpot(request, author, { areas: ['奈良県'], visibility: 'private' })
+    const status = async (id: number) => (await request.get(`/api/spots/${id}`, { headers: bearer(reader.accessToken) })).status()
+
+    expect(await status(followersOnly.id)).toBe(404)
+
+    const followed = await request.post(`/api/users/${author.id}/follow`, { headers: bearer(reader.accessToken) })
+    expect(await followed.json()).toEqual({ isFollowing: true, followerCount: 1 })
+    expect(await status(followersOnly.id)).toBe(200)
+    expect(await status(secret.id)).toBe(404)
+
+    await request.delete(`/api/users/${author.id}/follow`, { headers: bearer(reader.accessToken) })
+    expect(await status(followersOnly.id)).toBe(404)
+  })
+
+  test('フォローは、ログインしていないと 401。自分自身はフォローできない', async ({ request }) => {
+    const me = await registerUser(request, 'self')
+    await expectStatus(await request.post(`/api/users/${me.id}/follow`), 401)
+    await expectStatus(await request.post(`/api/users/${me.id}/follow`, { headers: bearer(me.accessToken) }), 400)
+  })
+
+  test('プロフィールにメールアドレスなどの個人情報が含まれない', async ({ request }) => {
+    const user = await registerUser(request, 'private-info')
+    const res = await request.get(`/api/users/${user.id}`)
+    expect(res.status()).toBe(200)
+    const text = await res.text()
+    expect(text).not.toContain(user.email)
+    expect(text).not.toContain('@')
+    expect(text).not.toMatch(/password|hash/i)
+  })
+
   test('パスワードの誤りと、未登録のメールで、応答が同じ(アカウントの有無を知らせない)', async ({ request }) => {
     const user = await registerUser(request, 'enum')
     const wrong = await request.post('/api/auth/login', { data: { email: user.email, password: 'wrong-password' } })

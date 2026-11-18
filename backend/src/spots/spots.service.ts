@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
-import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { viewableSpotsWhere } from './spot-visibility.js';
 import type { Visibility } from './dto/spot.dto.js';
 import { SpotInputDto } from './dto/spot.dto.js';
 import { DEFAULT_PAGE_SIZE, ListSpotsQueryDto } from './dto/list-spots.dto.js';
@@ -86,21 +86,21 @@ export class SpotsService {
     const limit = query.limit ?? DEFAULT_PAGE_SIZE;
     if (query.area !== undefined) await this.assertAreaExists(query.area);
 
-    const viewable: Prisma.SpotWhereInput[] = [{ visibility: 'public' }];
-    if (viewerId !== undefined) {
-      viewable.push(
-        { userId: viewerId },
-        {
-          visibility: 'followers',
-          user: { followers: { some: { followerId: viewerId } } },
-        },
-      );
+    // フォロー中の投稿は、ログイン中のユーザーが必要
+    if (query.following === 'true' && viewerId === undefined) {
+      throw new ApiError(401, 'UNAUTHORIZED', 'ログインが必要です。');
     }
+
     const rows = (await this.prisma.spot.findMany({
       where: {
         AND: [
-          { OR: viewable },
+          viewableSpotsWhere(viewerId),
           query.area ? { tags: { some: { tag: { name: query.area } } } } : {},
+          query.author ? { userId: query.author } : {},
+          // 投稿者をフォローしている(自分自身はフォローできないため、自分の投稿は含まれない)
+          query.following === 'true'
+            ? { user: { followers: { some: { followerId: viewerId } } } }
+            : {},
           query.cursor ? { id: { lt: query.cursor } } : {},
         ],
       },

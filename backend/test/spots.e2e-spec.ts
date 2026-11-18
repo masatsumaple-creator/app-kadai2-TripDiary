@@ -78,7 +78,14 @@ describe('Spots (e2e)', () => {
   afterAll(async () => {
     // 投稿・タグ・フォローは、ユーザー削除に連動して消える
     await prisma.user.deleteMany({
-      where: { email: { endsWith: `-${suffix}@example.com` } },
+      // ファイルごとに異なる接頭辞で、範囲を狭くして削除する。
+      // 全ユーザーを走査する条件だと、並列に動く他のテストファイルの書き込みと、ロックが競合してデッドロックになる
+      where: {
+        AND: [
+          { email: { startsWith: 'e2e-spots-' } },
+          { email: { endsWith: `-${suffix}@example.com` } },
+        ],
+      },
     });
     await app.close();
   });

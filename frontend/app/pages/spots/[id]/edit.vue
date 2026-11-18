@@ -4,6 +4,8 @@ import type { Spot } from '~/utils/spots'
 
 definePageMeta({ middleware: 'auth' })
 
+useHead({ title: 'スポットを編集' })
+
 const api = useSpotsApi()
 const id = Number(useRoute().params.id)
 

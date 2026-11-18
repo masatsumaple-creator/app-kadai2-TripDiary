@@ -3,6 +3,8 @@ import { findSpot } from '~/utils/mockData'
 
 definePageMeta({ middleware: 'auth' })
 
+useHead({ title: 'マイリスト' })
+
 // モック: 自分の投稿(江ノ島)は自動で訪問済み
 const tab = ref<'visited' | 'want'>('visited')
 const visited = ref([6, 1].map((id) => findSpot(id)!))
@@ -33,7 +35,7 @@ function remove(id: number) {
         :key="t.v"
         type="button"
         class="flex-1 py-2"
-        :class="tab === t.v ? 'border-b-2 border-sky-600 font-semibold text-sky-700' : 'text-gray-500'"
+        :class="tab === t.v ? 'border-b-2 border-sky-700 font-semibold text-sky-700' : 'text-gray-500'"
         @click="tab = t.v"
       >
         {{ t.l }}

@@ -29,7 +29,7 @@ const spots = computed(() =>
         v-if="!isMe"
         type="button"
         class="rounded border px-3 py-1.5 text-sm"
-        :class="following ? 'border-gray-300 bg-white' : 'border-sky-600 bg-sky-600 text-white'"
+        :class="following ? 'border-gray-300 bg-white' : 'border-sky-700 bg-sky-700 text-white'"
         data-testid="follow"
         @click="following = !following"
       >

@@ -37,7 +37,7 @@ function addComment() {
         :key="i"
         type="button"
         class="h-2 w-6 rounded-full"
-        :class="photo === i - 1 ? 'bg-sky-600' : 'bg-gray-300'"
+        :class="photo === i - 1 ? 'bg-sky-700' : 'bg-gray-300'"
         :aria-label="`写真 ${i}`"
         @click="photo = i - 1"
       />
@@ -115,7 +115,7 @@ function addComment() {
           class="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-sm"
           placeholder="コメントを入力"
         >
-        <button class="rounded bg-sky-600 px-4 py-2 text-sm text-white" type="submit">送信</button>
+        <button class="rounded bg-sky-700 px-4 py-2 text-sm text-white" type="submit">送信</button>
       </form>
     </section>
 

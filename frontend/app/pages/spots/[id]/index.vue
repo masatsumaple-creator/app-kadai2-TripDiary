@@ -13,6 +13,7 @@ const route = useRoute()
 const id = computed(() => Number(route.params.id))
 
 const spot = ref<Spot | null>(null)
+useHead({ title: () => spot.value?.name ?? 'スポット' })
 const nearby = ref<SpotListItem[]>([])
 const loading = ref(true)
 const notFound = ref(false)

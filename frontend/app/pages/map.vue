@@ -2,6 +2,8 @@
 import { findSpot, mockSpots } from '~/utils/mockData'
 
 const area = ref('')
+
+useHead({ title: '地図' })
 const selectedId = ref<number>()
 const spots = computed(() =>
   mockSpots.filter((s) => s.visibility === 'public' && (!area.value || s.areas.includes(area.value))),

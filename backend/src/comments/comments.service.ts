@@ -4,6 +4,7 @@ import { ApiError } from '../common/api-error.js';
 import { UserSummary } from '../common/api-doc.js';
 import { DEFAULT_PAGE_SIZE } from '../common/page-query.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { retryOnWriteConflict } from '../prisma/retry.js';
 import { SpotsService } from '../spots/spots.service.js';
 import type {
   CreateCommentDto,
@@ -106,10 +107,12 @@ export class CommentsService {
     dto: CreateCommentDto,
   ): Promise<CommentResponse> {
     const spot = await this.spots.findViewableSpot(spotId, userId);
-    const comment = (await this.prisma.comment.create({
-      data: { spotId, userId, body: dto.body },
-      select,
-    })) as CommentRecord;
+    const comment = (await retryOnWriteConflict(() =>
+      this.prisma.comment.create({
+        data: { spotId, userId, body: dto.body },
+        select,
+      }),
+    )) as CommentRecord;
     return this.toResponse(comment, spot.userId, userId);
   }
 
@@ -135,7 +138,9 @@ export class CommentsService {
         'このコメントを削除する権限がありません。',
       );
     }
-    await this.prisma.comment.delete({ where: { id: commentId } });
+    await retryOnWriteConflict(() =>
+      this.prisma.comment.delete({ where: { id: commentId } }),
+    );
   }
 
   private toResponse(

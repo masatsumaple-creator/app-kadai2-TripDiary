@@ -6,6 +6,7 @@ import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { retryOnWriteConflict } from './../src/prisma/retry.js';
 
 // 起動中の MySQL(docker compose up -d db)と DATABASE_URL、JWT_SECRET が必要
 describe('Auth (e2e)', () => {
@@ -37,16 +38,18 @@ describe('Auth (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany({
-      // ファイルごとに異なる接頭辞で、範囲を狭くして削除する。
-      // 全ユーザーを走査する条件だと、並列に動く他のテストファイルの書き込みと、ロックが競合してデッドロックになる
-      where: {
-        AND: [
-          { email: { startsWith: 'e2e-auth-' } },
-          { email: { endsWith: `-${suffix}@example.com` } },
-        ],
-      },
-    });
+    await retryOnWriteConflict(() =>
+      prisma.user.deleteMany({
+        // ファイルごとに異なる接頭辞で、範囲を狭くして削除する。
+        // 全ユーザーを走査する条件だと、並列に動く他のテストファイルの書き込みと、ロックが競合してデッドロックになる
+        where: {
+          AND: [
+            { email: { startsWith: 'e2e-auth-' } },
+            { email: { endsWith: `-${suffix}@example.com` } },
+          ],
+        },
+      }),
+    );
     await app.close();
   });
 

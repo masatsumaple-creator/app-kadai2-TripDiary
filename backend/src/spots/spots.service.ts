@@ -3,19 +3,23 @@ import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { UserSummary } from '../common/api-doc.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { retryOnWriteConflict } from '../prisma/retry.js';
 import { viewableSpotsWhere } from './spot-visibility.js';
+import { LIST_STATUSES } from './list-status.js';
+import type { ListStatusValue } from './list-status.js';
 import { SpotInputDto, VISIBILITIES } from './dto/spot.dto.js';
 import type { Visibility } from './dto/spot.dto.js';
 import { DEFAULT_PAGE_SIZE } from '../common/page-query.dto.js';
 import { ListSpotsQueryDto } from './dto/list-spots.dto.js';
 
-const include = {
+// 投稿の取得時に含める関連(一覧・詳細・マイリストで共通)
+export const spotInclude = {
   tags: { include: { tag: true } },
   user: { select: { id: true, name: true } },
   _count: { select: { likes: true, comments: true } },
 } as const;
 
-interface SpotRecord {
+export interface SpotRecord {
   id: number;
   userId: number;
   name: string;
@@ -83,6 +87,14 @@ export class SpotResponse {
   })
   liked: boolean;
 
+  @ApiProperty({
+    enum: LIST_STATUSES,
+    nullable: true,
+    description:
+      '閲覧者のマイリストでの状態(visited: 訪問済み、wishlist: 行きたい、null: リストにない・未ログイン)。自分の投稿は、常に visited',
+  })
+  listStatus: ListStatusValue | null;
+
   @ApiProperty({ type: 'string', format: 'date-time' })
   createdAt: Date;
 
@@ -142,16 +154,20 @@ export class SpotsService {
 
   async create(userId: number, dto: SpotInputDto): Promise<SpotResponse> {
     const tagIds = await this.resolveTagIds(dto.areas);
-    const spot = await this.prisma.spot.create({
-      data: {
-        userId,
-        ...this.fields(dto),
-        tags: { create: tagIds.map((tagId) => ({ tagId })) },
-      },
-      include,
-    });
-    // 作ったばかりなので、いいねもコメントもない
-    return this.toResponse(spot, userId, false);
+    const spot = await retryOnWriteConflict(() =>
+      this.prisma.spot.create({
+        data: {
+          userId,
+          ...this.fields(dto),
+          tags: { create: tagIds.map((tagId) => ({ tagId })) },
+          // 自分の投稿は、自動で「訪問済み」(同じ操作の中で作るので、投稿だけが残ることはない)
+          userSpots: { create: { userId, status: 'visited' } },
+        },
+        include: spotInclude,
+      }),
+    );
+    // 作ったばかりなので、いいねもコメントもない。自分の投稿なので、リストは「訪問済み」
+    return this.toResponse(spot, userId, false, 'visited');
   }
 
   // 新着順(ID の降順)の一覧。詳細と同じ公開範囲の規則で、閲覧できる投稿だけを返す。
@@ -181,7 +197,7 @@ export class SpotsService {
           query.cursor ? { id: { lt: query.cursor } } : {},
         ],
       },
-      include,
+      include: spotInclude,
       orderBy: { id: 'desc' },
       // 次のページがあるかを判定するため 1 件多く取る
       take: limit + 1,
@@ -196,7 +212,11 @@ export class SpotsService {
 
   async get(id: number, viewerId?: number): Promise<SpotResponse> {
     const spot = await this.findViewable(id, viewerId);
-    return this.toResponse(spot, viewerId, await this.isLiked(id, viewerId));
+    const [liked, listStatus] = await Promise.all([
+      this.isLiked(id, viewerId),
+      this.listStatusOf(id, viewerId),
+    ]);
+    return this.toResponse(spot, viewerId, liked, listStatus);
   }
 
   // いいね・コメントなど、投稿に付く操作の前に、閲覧できる投稿かを確かめる。
@@ -217,20 +237,28 @@ export class SpotsService {
   ): Promise<SpotResponse> {
     await this.findOwned(id, userId);
     const tagIds = await this.resolveTagIds(dto.areas);
-    const spot = await this.prisma.spot.update({
-      where: { id },
-      data: {
-        ...this.fields(dto),
-        tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) },
-      },
-      include,
-    });
-    return this.toResponse(spot, userId, await this.isLiked(id, userId));
+    const spot = await retryOnWriteConflict(() =>
+      this.prisma.spot.update({
+        where: { id },
+        data: {
+          ...this.fields(dto),
+          tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) },
+        },
+        include: spotInclude,
+      }),
+    );
+    const [liked, listStatus] = await Promise.all([
+      this.isLiked(id, userId),
+      this.listStatusOf(id, userId),
+    ]);
+    return this.toResponse(spot, userId, liked, listStatus);
   }
 
   async remove(id: number, userId: number): Promise<void> {
     await this.findOwned(id, userId);
-    await this.prisma.spot.delete({ where: { id } });
+    await retryOnWriteConflict(() =>
+      this.prisma.spot.delete({ where: { id } }),
+    );
   }
 
   // 閲覧できない投稿は、存在しない場合と同じ 404 にする(存在を知らせない)
@@ -240,7 +268,7 @@ export class SpotsService {
   ): Promise<SpotRecord> {
     const spot = (await this.prisma.spot.findUnique({
       where: { id },
-      include,
+      include: spotInclude,
     })) as SpotRecord | null;
     if (!spot || !(await this.canView(spot, viewerId))) throw notFound();
     return spot;
@@ -298,7 +326,7 @@ export class SpotsService {
     }
   }
 
-  private toListItem(spot: SpotRecord, viewerId?: number): SpotListItem {
+  toListItem(spot: SpotRecord, viewerId?: number): SpotListItem {
     return {
       id: spot.id,
       name: spot.name,
@@ -312,6 +340,19 @@ export class SpotsService {
       commentCount: spot._count.comments,
       createdAt: spot.createdAt,
     };
+  }
+
+  // 閲覧者のリストの状態(リストにない・未ログインは null)
+  private async listStatusOf(
+    spotId: number,
+    viewerId?: number,
+  ): Promise<ListStatusValue | null> {
+    if (viewerId === undefined) return null;
+    const entry = await this.prisma.userSpot.findUnique({
+      where: { userId_spotId: { userId: viewerId, spotId } },
+      select: { status: true },
+    });
+    return entry?.status ?? null;
   }
 
   private async isLiked(spotId: number, viewerId?: number): Promise<boolean> {
@@ -357,6 +398,7 @@ export class SpotsService {
     spot: SpotRecord,
     viewerId: number | undefined,
     liked: boolean,
+    listStatus: ListStatusValue | null,
   ): SpotResponse {
     return {
       id: spot.id,
@@ -374,6 +416,7 @@ export class SpotsService {
       likeCount: spot._count.likes,
       commentCount: spot._count.comments,
       liked,
+      listStatus,
       createdAt: spot.createdAt,
       updatedAt: spot.updatedAt,
     };

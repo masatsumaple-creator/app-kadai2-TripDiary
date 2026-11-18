@@ -6,6 +6,7 @@ import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { retryOnWriteConflict } from './../src/prisma/retry.js';
 
 // いいね・コメントの結合テスト。
 // 起動中の MySQL(docker compose up -d db)、マイグレーション適用済みの DB、DATABASE_URL、JWT_SECRET が必要
@@ -95,14 +96,16 @@ describe('Likes / Comments (e2e)', () => {
 
   afterAll(async () => {
     // ファイルごとに異なる接頭辞で、範囲を狭くして削除する(並列に動く他のファイルとのデッドロックを避ける)
-    await prisma.user.deleteMany({
-      where: {
-        AND: [
-          { email: { startsWith: PREFIX } },
-          { email: { endsWith: `-${suffix}@example.com` } },
-        ],
-      },
-    });
+    await retryOnWriteConflict(() =>
+      prisma.user.deleteMany({
+        where: {
+          AND: [
+            { email: { startsWith: PREFIX } },
+            { email: { endsWith: `-${suffix}@example.com` } },
+          ],
+        },
+      }),
+    );
     await app.close();
   });
 

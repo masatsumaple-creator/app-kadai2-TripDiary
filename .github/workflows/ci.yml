@@ -78,3 +78,59 @@ jobs:
       - run: npm test
       # デプロイと同じ静的出力が作れることを確認する
       - run: npm run generate
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          # E2E 専用のデータベース。e2e/support/env.ts の既定の接続先と揃えてある
+          MYSQL_DATABASE: tripdiary_e2e
+          MYSQL_USER: tripdiary
+          MYSQL_PASSWORD: tripdiary
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            e2e/package-lock.json
+      # E2E は、バックエンドとフロントを実際に起動して操作する。両方の依存が必要
+      - run: npm ci
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: npm ci
+        working-directory: e2e
+      - run: npm run typecheck
+        working-directory: e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      # DB のマイグレーション、サーバーの起動、後始末は、global-setup / webServer / global-teardown が行う
+      - run: npm test
+        working-directory: e2e
+      # 失敗の調査用に、レポートとトレースを保存する
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7

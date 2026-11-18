@@ -167,6 +167,53 @@ test.describe('スマートフォン幅', () => {
     expect(new Set(lefts).size).toBe(1)
   })
 
+  test('マイリストが、横にはみ出さず、タブ・ボタンをタブバーに隠れずに操作できる(長い名前でもはみ出さない)', async ({
+    page,
+    request,
+  }) => {
+    const author = await registerUser(request, 'mobile')
+    const me = await registerUser(request, 'mobile')
+    const longName = `とても長い名前のスポット${'あ'.repeat(60)}`
+    const spot = await createSpot(request, author, { name: longName })
+    for (let i = 0; i < 3; i++) {
+      const s = await createSpot(request, author, { name: uniqueName('リスト') })
+      await request.put(`/api/spots/${s.id}/list`, { data: { status: 'wishlist' }, headers: { Authorization: `Bearer ${me.accessToken}` } })
+    }
+    await request.put(`/api/spots/${spot.id}/list`, { data: { status: 'wishlist' }, headers: { Authorization: `Bearer ${me.accessToken}` } })
+    await signIn(page, me)
+
+    await page.goto('/me/list')
+    await page.getByTestId('tab-wishlist').click()
+    await expect(page.getByTestId('list-item')).toHaveCount(4)
+    await expectNoHorizontalScroll(page)
+
+    // 最後の項目まで見て、固定のタブバーに隠れずに「訪問済みにする」を押せる
+    await page.getByTestId('list-item').last().scrollIntoViewIfNeeded()
+    await page.getByTestId('list-item').last().getByTestId('item-to-visited').click()
+    await expect(page.getByTestId('list-item')).toHaveCount(3)
+    await expect(page.getByTestId('count-visited')).toHaveText('1')
+    await expectNoHorizontalScroll(page)
+
+    // タブバーの「マイリスト」から開ける
+    await page.goto('/')
+    await page.locator('nav.fixed').getByRole('link', { name: 'マイリスト' }).click()
+    await expect(page).toHaveURL((url) => url.pathname === '/me/list')
+  })
+
+  test('詳細のマイリストのボタンが、スマートフォン幅で折り返し、横にはみ出さず、押せる', async ({ page, request }) => {
+    const author = await registerUser(request, 'mobile')
+    const me = await registerUser(request, 'mobile')
+    const spot = await createSpot(request, author)
+    await signIn(page, me)
+    await page.goto(`/spots/${spot.id}`)
+    await page.getByTestId('list-add-wishlist').click()
+    await expect(page.getByTestId('list-status')).toHaveText('行きたい')
+    await expectNoHorizontalScroll(page)
+    await page.getByTestId('list-to-visited').click()
+    await expect(page.getByTestId('list-status')).toHaveText('訪問済み')
+    await expectNoHorizontalScroll(page)
+  })
+
   test('スマートフォン幅でも、アクセシビリティの違反がない(一覧・フォーム)', async ({ page, request }) => {
     const user = await registerUser(request, 'mobile')
     await createSpot(request, user, { areas: ['愛媛県'] })

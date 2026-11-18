@@ -98,6 +98,52 @@ test.describe('アクセシビリティ(WCAG A/AA)', () => {
     expect(await scanA11y(page)).toEqual([])
   })
 
+  test('詳細のマイリストボタン(未追加・行きたい・訪問済み・自分の投稿)', async ({ page, request }) => {
+    const author = await registerUser(request, 'a11y')
+    const me = await registerUser(request, 'a11y')
+    const spot = await createSpot(request, author)
+    const mine = await createSpot(request, me)
+    await signIn(page, me)
+
+    await page.goto(`/spots/${spot.id}`)
+    await expect(page.getByTestId('list-add-wishlist')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+    await page.getByTestId('list-add-wishlist').click()
+    await expect(page.getByTestId('list-status')).toHaveText('行きたい')
+    expect(await scanA11y(page)).toEqual([])
+    await page.getByTestId('list-to-visited').click()
+    await expect(page.getByTestId('list-status')).toHaveText('訪問済み')
+    expect(await scanA11y(page)).toEqual([])
+
+    await page.goto(`/spots/${mine.id}`)
+    await expect(page.getByTestId('list-buttons')).toContainText('自動で訪問済み')
+    expect(await scanA11y(page)).toEqual([])
+  })
+
+  test('マイリスト(空・項目あり・タブの切り替え)', async ({ page, request }) => {
+    const author = await registerUser(request, 'a11y')
+    const me = await registerUser(request, 'a11y')
+    await signIn(page, me)
+    await page.goto('/me/list')
+    await page.getByTestId('tab-wishlist').click()
+    await expect(page.getByTestId('list-empty')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+
+    const spot = await createSpot(request, author)
+    await request.put(`/api/spots/${spot.id}/list`, {
+      data: { status: 'wishlist' },
+      headers: { Authorization: `Bearer ${me.accessToken}` },
+    })
+    await createSpot(request, me)
+    await page.reload()
+    await page.getByTestId('tab-wishlist').click()
+    await expect(page.getByTestId('list-item')).toHaveCount(1)
+    expect(await scanA11y(page)).toEqual([])
+    await page.getByTestId('tab-visited').click()
+    await expect(page.getByTestId('list-item-own')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+  })
+
   test('詳細のコメント欄(未ログイン: ログインへの案内)', async ({ page, request }) => {
     const owner = await registerUser(request, 'a11y')
     const spot = await createSpot(request, owner)

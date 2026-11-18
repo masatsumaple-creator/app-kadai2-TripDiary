@@ -1,3 +1,4 @@
+import type { ListStatus } from './lists'
 import type { Visibility } from './spotMeta'
 
 // バックエンドの応答の型(docs/20_設計書.md のスポット API)
@@ -30,6 +31,8 @@ export interface Spot extends SpotListItem {
   longitude: number | null
   // 閲覧者がいいね済みか(未ログインは false)
   liked: boolean
+  // 閲覧者のマイリストでの状態(リストにない・未ログインは null。自分の投稿は常に visited)
+  listStatus: ListStatus | null
   updatedAt: string
 }
 

@@ -4,11 +4,13 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { viewableSpotsWhere } from './spot-visibility.js';
 import type { Visibility } from './dto/spot.dto.js';
 import { SpotInputDto } from './dto/spot.dto.js';
-import { DEFAULT_PAGE_SIZE, ListSpotsQueryDto } from './dto/list-spots.dto.js';
+import { DEFAULT_PAGE_SIZE } from '../common/page-query.dto.js';
+import { ListSpotsQueryDto } from './dto/list-spots.dto.js';
 
 const include = {
   tags: { include: { tag: true } },
   user: { select: { id: true, name: true } },
+  _count: { select: { likes: true, comments: true } },
 } as const;
 
 interface SpotRecord {
@@ -24,6 +26,7 @@ interface SpotRecord {
   updatedAt: Date;
   tags: { tagId: number; tag: { name: string } }[];
   user: { id: number; name: string };
+  _count: { likes: number; comments: number };
 }
 
 export interface SpotResponse {
@@ -37,6 +40,10 @@ export interface SpotResponse {
   visibility: Visibility;
   author: { id: number; name: string };
   isMine: boolean;
+  likeCount: number;
+  commentCount: number;
+  // 閲覧者がいいね済みか(未ログインは false)
+  liked: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +56,8 @@ export interface SpotListItem {
   visibility: Visibility;
   author: { id: number; name: string };
   isMine: boolean;
+  likeCount: number;
+  commentCount: number;
   createdAt: Date;
 }
 
@@ -74,7 +83,8 @@ export class SpotsService {
       },
       include,
     });
-    return this.toResponse(spot, userId);
+    // 作ったばかりなので、いいねもコメントもない
+    return this.toResponse(spot, userId, false);
   }
 
   // 新着順(ID の降順)の一覧。詳細と同じ公開範囲の規則で、閲覧できる投稿だけを返す。
@@ -119,7 +129,17 @@ export class SpotsService {
 
   async get(id: number, viewerId?: number): Promise<SpotResponse> {
     const spot = await this.findViewable(id, viewerId);
-    return this.toResponse(spot, viewerId);
+    return this.toResponse(spot, viewerId, await this.isLiked(id, viewerId));
+  }
+
+  // いいね・コメントなど、投稿に付く操作の前に、閲覧できる投稿かを確かめる。
+  // 閲覧できない投稿は、存在しない投稿と同じ 404 にする
+  async findViewableSpot(
+    id: number,
+    viewerId?: number,
+  ): Promise<{ id: number; userId: number }> {
+    const spot = await this.findViewable(id, viewerId);
+    return { id: spot.id, userId: spot.userId };
   }
 
   // 全項目を置き換える。エリアタグも指定したものに入れ替える
@@ -138,7 +158,7 @@ export class SpotsService {
       },
       include,
     });
-    return this.toResponse(spot, userId);
+    return this.toResponse(spot, userId, await this.isLiked(id, userId));
   }
 
   async remove(id: number, userId: number): Promise<void> {
@@ -221,8 +241,18 @@ export class SpotsService {
       visibility: spot.visibility,
       author: spot.user,
       isMine: viewerId !== undefined && spot.userId === viewerId,
+      likeCount: spot._count.likes,
+      commentCount: spot._count.comments,
       createdAt: spot.createdAt,
     };
+  }
+
+  private async isLiked(spotId: number, viewerId?: number): Promise<boolean> {
+    if (viewerId === undefined) return false;
+    const like = await this.prisma.like.findUnique({
+      where: { userId_spotId: { userId: viewerId, spotId } },
+    });
+    return like !== null;
   }
 
   // 都道府県名から ID を引く。マスタにない名前は入力エラーにする
@@ -256,7 +286,11 @@ export class SpotsService {
     };
   }
 
-  private toResponse(spot: SpotRecord, viewerId?: number): SpotResponse {
+  private toResponse(
+    spot: SpotRecord,
+    viewerId: number | undefined,
+    liked: boolean,
+  ): SpotResponse {
     return {
       id: spot.id,
       name: spot.name,
@@ -270,6 +304,9 @@ export class SpotsService {
       visibility: spot.visibility,
       author: spot.user,
       isMine: viewerId !== undefined && spot.userId === viewerId,
+      likeCount: spot._count.likes,
+      commentCount: spot._count.comments,
+      liked,
       createdAt: spot.createdAt,
       updatedAt: spot.updatedAt,
     };

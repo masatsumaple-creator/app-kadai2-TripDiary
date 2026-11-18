@@ -1,0 +1,50 @@
+import { Injectable } from '@nestjs/common';
+import { ApiError } from '../common/api-error.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { SpotsService } from '../spots/spots.service.js';
+
+export interface LikeState {
+  liked: boolean;
+  likeCount: number;
+}
+
+@Injectable()
+export class LikesService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly spots: SpotsService,
+  ) {}
+
+  // いいねする。閲覧できる投稿だけが対象(閲覧できない投稿は 404)。
+  // すでにいいね済みでも同じ結果を返す(何度実行しても同じ。同時に実行しても重複しない)
+  async like(spotId: number, userId: number): Promise<LikeState> {
+    const spot = await this.spots.findViewableSpot(spotId, userId);
+    if (spot.userId === userId) {
+      throw new ApiError(
+        400,
+        'CANNOT_LIKE_OWN_SPOT',
+        '自分の投稿にはいいねできません。',
+      );
+    }
+    await this.prisma.like.createMany({
+      data: [{ userId, spotId }],
+      skipDuplicates: true,
+    });
+    return this.state(spotId, userId);
+  }
+
+  // いいねを取り消す。いいねしていなくても同じ結果を返す
+  async unlike(spotId: number, userId: number): Promise<LikeState> {
+    await this.spots.findViewableSpot(spotId, userId);
+    await this.prisma.like.deleteMany({ where: { userId, spotId } });
+    return this.state(spotId, userId);
+  }
+
+  private async state(spotId: number, userId: number): Promise<LikeState> {
+    const [likeCount, mine] = await Promise.all([
+      this.prisma.like.count({ where: { spotId } }),
+      this.prisma.like.count({ where: { spotId, userId } }),
+    ]);
+    return { liked: mine > 0, likeCount };
+  }
+}

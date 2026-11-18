@@ -13,6 +13,8 @@ export interface SpotListItem {
   visibility: Visibility
   author: Author
   isMine: boolean
+  likeCount: number
+  commentCount: number
   createdAt: string
 }
 
@@ -26,6 +28,8 @@ export interface Spot extends SpotListItem {
   address: string | null
   latitude: number | null
   longitude: number | null
+  // 閲覧者がいいね済みか(未ログインは false)
+  liked: boolean
   updatedAt: string
 }
 
@@ -90,13 +94,19 @@ export function toSpotInput(form: SpotFormState): SpotInput {
 
 export interface ListParams {
   area?: string
+  // このユーザー ID の投稿だけ(プロフィールの投稿一覧)
+  author?: number
+  // true なら、フォロー中のユーザーの投稿だけ(要ログイン)
+  following?: boolean
   cursor?: number | null
   limit?: number
 }
 
-export function buildListQuery({ area, cursor, limit }: ListParams): string {
+export function buildListQuery({ area, author, following, cursor, limit }: ListParams): string {
   const q = new URLSearchParams()
   if (area) q.set('area', area)
+  if (author) q.set('author', String(author))
+  if (following) q.set('following', 'true')
   if (cursor) q.set('cursor', String(cursor))
   if (limit) q.set('limit', String(limit))
   const s = q.toString()
@@ -123,6 +133,7 @@ export function toCardSpot(item: SpotListItem): CardSpot {
     areas: item.areas,
     visibility: item.visibility,
     authorName: item.author.name,
+    likes: item.likeCount,
   }
 }
 

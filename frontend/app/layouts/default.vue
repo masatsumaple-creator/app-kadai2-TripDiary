@@ -2,21 +2,21 @@
 import { useAuthStore } from '~/stores/auth'
 
 const route = useRoute()
+const auth = useAuthStore()
 const nav = [
   { to: '/', label: '新着', icon: '🏠' },
   { to: '/following', label: 'フォロー中', icon: '👥' },
   { to: '/map', label: '地図', icon: '🗺️' },
 ]
 // スマホの下部タブにのみ出す項目(PC ではヘッダーに表示)
-const mobileOnly = [
+const mobileOnly = computed(() => [
   { to: '/me/list', label: 'マイリスト', icon: '🔖' },
-  { to: '/users/5', label: 'プロフィール', icon: '👤' },
-]
+  { to: `/users/${auth.user?.id}`, label: 'プロフィール', icon: '👤' },
+])
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
 
-const auth = useAuthStore()
 // ログイン済みのときだけ、マイリスト・プロフィールを下部タブに出す
-const tabs = computed(() => (auth.isLoggedIn ? [...nav, ...mobileOnly] : nav))
+const tabs = computed(() => (auth.isLoggedIn ? [...nav, ...mobileOnly.value] : nav))
 
 async function logout() {
   await auth.logout()
@@ -42,7 +42,9 @@ async function logout() {
         <div class="ml-auto flex items-center gap-3 text-sm">
           <template v-if="auth.user">
             <NuxtLink to="/me/list" class="hidden text-gray-600 md:inline">マイリスト</NuxtLink>
-            <NuxtLink to="/users/5" class="hidden text-gray-600 md:inline">プロフィール</NuxtLink>
+            <NuxtLink :to="`/users/${auth.user.id}`" class="hidden text-gray-600 md:inline">
+              プロフィール
+            </NuxtLink>
             <span class="hidden max-w-24 truncate text-gray-500 md:inline" data-testid="user-name">
               {{ auth.user.name }}
             </span>

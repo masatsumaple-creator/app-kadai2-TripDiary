@@ -196,6 +196,7 @@ const errorsOf = (...keys: string[]) =>
       <select
         class="block rounded border border-gray-300 bg-white px-2 py-1"
         :disabled="form.areas.length >= 3"
+        aria-label="エリアタグを追加"
         data-testid="area-select"
         @change="addArea"
       >
@@ -256,7 +257,7 @@ const errorsOf = (...keys: string[]) =>
     <div class="flex gap-2">
       <button
         type="submit"
-        class="rounded bg-sky-600 px-4 py-2 text-sm text-white disabled:bg-gray-300"
+        class="rounded bg-sky-700 px-4 py-2 text-sm text-white disabled:bg-gray-300"
         :disabled="!canSave"
         data-testid="save"
       >

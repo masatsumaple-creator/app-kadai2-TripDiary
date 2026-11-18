@@ -27,11 +27,11 @@ npx playwright test -g "新規登録"   # 名前で絞り込む
 | `global-setup.ts` / `global-teardown.ts` | 実行前: マイグレーション・残りの削除・ウォームアップ。実行後: テスト用ユーザーの削除 |
 | `fixtures/api.ts` | API でユーザー・投稿を作る、ブラウザをログイン済みにする |
 | `pages/` | ページオブジェクト(ログイン、投稿フォーム) |
-| `tests/` | テスト本体(`auth`、`spots`、`paging`) |
-| `support/` | 接続先の設定、DB の後始末 |
+| `tests/` | テスト本体(`auth`、`spots`、`paging`、`security`、`a11y`、`responsive`) |
+| `support/` | 接続先の設定、DB の後始末、アクセシビリティの検査(`a11y.ts`) |
 
 ## テストを書くときの決まり
 - ユーザーも投稿名もテストごとに一意にする(`registerUser`、`uniqueName`)。結果は自分のデータだけで判定する
 - 件数を厳密に確認したいときは、他のテストが使わないエリアを専用にする(`paging.spec.ts` を参照)
-- URL の確認はパス名で厳密にする(`toHaveURL((url) => url.pathname === '/spots/new')`)
+- URL の確認はパス名で厳密に、再試行つきで行う(`expect(page).toHaveURL((url) => url.pathname === "/spots/new")`)。ログイン直後はユーザー名がページ移動より先に出る
 - 失敗の原因を調べたいときは `E2E_KEEP_DATA=1 npm test` でデータを残せる(後で `tripdiary_e2e` から接頭辞 `e2e_` のユーザーを削除する)

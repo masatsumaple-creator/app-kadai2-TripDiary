@@ -23,7 +23,7 @@ function pos(s: MapPoint) {
       background-image: linear-gradient(#e0f2fe 1px, transparent 1px), linear-gradient(90deg, #e0f2fe 1px, transparent 1px);
       background-size: 32px 32px;
     "
-    role="img"
+    role="group"
     aria-label="地図(モック)"
   >
     <span class="absolute right-2 top-2 rounded bg-white/80 px-2 py-0.5 text-xs text-gray-500">ダミー地図</span>

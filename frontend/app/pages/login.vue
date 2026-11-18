@@ -10,6 +10,7 @@ const route = useRoute()
 if (auth.isLoggedIn) await navigateTo(safeRedirect(route.query.redirect), { replace: true })
 
 const mode = ref<'login' | 'register'>('login')
+useHead({ title: () => (mode.value === 'login' ? 'ログイン' : '新規登録') })
 const email = ref('')
 const password = ref('')
 const displayName = ref('')
@@ -53,7 +54,7 @@ async function submit() {
         :key="m"
         type="button"
         class="flex-1 py-2"
-        :class="mode === m ? 'border-b-2 border-sky-600 font-semibold text-sky-700' : 'text-gray-500'"
+        :class="mode === m ? 'border-b-2 border-sky-700 font-semibold text-sky-700' : 'text-gray-500'"
         @click="switchMode(m)"
       >
         {{ m === 'login' ? 'ログイン' : '新規登録' }}
@@ -93,7 +94,7 @@ async function submit() {
       </p>
       <button
         type="submit"
-        class="w-full rounded bg-sky-600 py-2 text-sm text-white disabled:bg-gray-300"
+        class="w-full rounded bg-sky-700 py-2 text-sm text-white disabled:bg-gray-300"
         :disabled="submitting"
         data-testid="submit"
       >

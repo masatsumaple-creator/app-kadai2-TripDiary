@@ -47,11 +47,11 @@ async function logout() {
               {{ auth.user.name }}
             </span>
             <button type="button" class="text-gray-600" data-testid="logout" @click="logout">ログアウト</button>
-            <NuxtLink to="/spots/new" class="rounded bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-700">
+            <NuxtLink to="/spots/new" class="rounded bg-sky-700 px-3 py-1.5 text-white hover:bg-sky-800">
               投稿する
             </NuxtLink>
           </template>
-          <NuxtLink v-else to="/login" class="rounded bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-700">
+          <NuxtLink v-else to="/login" class="rounded bg-sky-700 px-3 py-1.5 text-white hover:bg-sky-800">
             ログイン
           </NuxtLink>
         </div>

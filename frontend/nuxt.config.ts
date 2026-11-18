@@ -14,6 +14,13 @@ export default defineNuxtConfig({
   // バックエンド(3000)と衝突しないよう固定する
   devServer: { port: 5173 },
   modules: ['@nuxt/eslint', '@pinia/nuxt'],
+  app: {
+    head: {
+      htmlAttrs: { lang: 'ja' },
+      // 題名を付けていない画面の既定。画面ごとの題名は useHead({ title }) で付ける(app.vue のテンプレートで「<題名> | TripDiary」になる)
+      title: 'TripDiary',
+    },
+  },
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],

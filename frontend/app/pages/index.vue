@@ -3,6 +3,8 @@ import { ApiError } from '~/utils/api'
 import { toCardSpot, type SpotListItem } from '~/utils/spots'
 
 const api = useSpotsApi()
+
+useHead({ title: '新着' })
 const area = ref('')
 const items = ref<SpotListItem[]>([])
 const nextCursor = ref<number | null>(null)

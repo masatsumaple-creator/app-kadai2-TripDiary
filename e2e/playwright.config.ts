@@ -31,8 +31,14 @@ export default defineConfig({
   projects: [
     {
       name: 'functional',
-      testIgnore: /paging\.spec\.ts/,
+      testIgnore: /paging\.spec\.ts|responsive\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // スマートフォン幅(Pixel 7 相当)での表示の確認
+      name: 'mobile',
+      testMatch: /responsive\.spec\.ts/,
+      use: { ...devices['Pixel 7'] },
     },
     {
       // 専用エリアの件数を厳密に確認するテスト。ファイル内の並列実行を切り、1 つずつ実行する

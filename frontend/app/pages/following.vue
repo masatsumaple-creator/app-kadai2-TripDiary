@@ -3,6 +3,8 @@ import { mockSpots, mockToCard } from '~/utils/mockData'
 
 definePageMeta({ middleware: 'auth' })
 
+useHead({ title: 'フォロー中' })
+
 // モック: フォロー中は「けんた」「みお」とする
 const followed = ['けんた', 'みお']
 const spots = computed(() => mockSpots.filter((s) => followed.includes(s.author)))

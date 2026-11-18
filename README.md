@@ -94,7 +94,7 @@ npm run dev
 
 ## ドキュメント
 
-[docs/README.md](docs/README.md) に一覧があります。
+[docs/INDEX.md](docs/INDEX.md) に一覧があります。
 
 | 知りたいこと | 読むもの |
 |---|---|

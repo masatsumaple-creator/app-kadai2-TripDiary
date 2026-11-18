@@ -106,6 +106,61 @@ test.describe('セキュリティ: 認証・権限(API)', () => {
     expect(text).not.toMatch(/password|hash/i)
   })
 
+  test('いいね・コメントは、ログインが必要。閲覧できない投稿には使えない(存在を知らせない)', async ({ request }) => {
+    const owner = await registerUser(request, 'owner')
+    const stranger = await registerUser(request, 'stranger')
+    const open = await createSpot(request, owner)
+    const secret = await createSpot(request, owner, { visibility: 'private' })
+
+    // 未ログイン
+    await expectStatus(await request.post(`/api/spots/${open.id}/like`), 401)
+    await expectStatus(await request.delete(`/api/spots/${open.id}/like`), 401)
+    await expectStatus(await request.post(`/api/spots/${open.id}/comments`, { data: { body: 'こんにちは' } }), 401)
+    // 閲覧できない投稿: 存在しない投稿と同じ 404(いいね、コメントの投稿・一覧)
+    const h = bearer(stranger.accessToken)
+    await expectStatus(await request.post(`/api/spots/${secret.id}/like`, { headers: h }), 404)
+    await expectStatus(
+      await request.post(`/api/spots/${secret.id}/comments`, { data: { body: 'こんにちは' }, headers: h }),
+      404,
+    )
+    await expectStatus(await request.get(`/api/spots/${secret.id}/comments`, { headers: h }), 404)
+    await expectStatus(await request.get(`/api/spots/${secret.id}/comments`), 404)
+  })
+
+  test('自分の投稿にはいいねできない。他人のコメントを削除できるのは、投稿者とコメントした本人だけ', async ({ request }) => {
+    const owner = await registerUser(request, 'owner')
+    const fan = await registerUser(request, 'fan')
+    const third = await registerUser(request, 'third')
+    const spot = await createSpot(request, owner)
+    const own = bearer(owner.accessToken)
+
+    await expectStatus(await request.post(`/api/spots/${spot.id}/like`, { headers: own }), 400)
+
+    const created = await request.post(`/api/spots/${spot.id}/comments`, {
+      data: { body: '質問です' },
+      headers: bearer(fan.accessToken),
+    })
+    expect(created.status()).toBe(201)
+    const commentId = ((await created.json()) as { id: number }).id
+    const url = `/api/spots/${spot.id}/comments/${commentId}`
+
+    await expectStatus(await request.delete(url, { headers: bearer(third.accessToken) }), 403)
+    await expectStatus(await request.delete(url, { headers: own }), 204) // 投稿者は消せる
+    await expectStatus(await request.delete(url, { headers: own }), 404) // 消した後は存在しない
+  })
+
+  test('コメントの内容は HTML として解釈されず、API は内容をそのまま返す(エスケープは表示側の責務)', async ({
+    request,
+  }) => {
+    const owner = await registerUser(request, 'owner')
+    const fan = await registerUser(request, 'fan')
+    const spot = await createSpot(request, owner)
+    const body = '<img src=x onerror="window.__xss=1"><script>alert(1)</script>'
+    const res = await request.post(`/api/spots/${spot.id}/comments`, { data: { body }, headers: bearer(fan.accessToken) })
+    expect(res.status()).toBe(201)
+    expect(((await res.json()) as { body: string }).body).toBe(body)
+  })
+
   test('パスワードの誤りと、未登録のメールで、応答が同じ(アカウントの有無を知らせない)', async ({ request }) => {
     const user = await registerUser(request, 'enum')
     const wrong = await request.post('/api/auth/login', { data: { email: user.email, password: 'wrong-password' } })

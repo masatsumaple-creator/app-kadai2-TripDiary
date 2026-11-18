@@ -20,6 +20,8 @@ model User {
   spots         Spot[]
   following     Follow[]       @relation("Follower")
   followers     Follow[]       @relation("Followee")
+  likes         Like[]
+  comments      Comment[]
 
   @@map("users")
 }
@@ -64,6 +66,8 @@ model Spot {
   updatedAt  DateTime       @updatedAt @map("updated_at")
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   tags       SpotTag[]
+  likes      Like[]
+  comments   Comment[]
 
   @@index([userId])
   @@index([visibility, createdAt])
@@ -91,4 +95,31 @@ model Follow {
   @@id([followerId, followeeId])
   @@index([followeeId])
   @@map("follows")
+}
+
+model Like {
+  userId    Int      @map("user_id")
+  spotId    Int      @map("spot_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spot      Spot     @relation(fields: [spotId], references: [id], onDelete: Cascade)
+
+  // 1 ユーザー 1 投稿につき 1 回
+  @@id([userId, spotId])
+  @@index([spotId])
+  @@map("likes")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  spotId    Int      @map("spot_id")
+  userId    Int      @map("user_id")
+  body      String   @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  spot      Spot     @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([spotId, id])
+  @@index([userId])
+  @@map("comments")
 }

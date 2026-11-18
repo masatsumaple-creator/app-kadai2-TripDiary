@@ -7,5 +7,7 @@ import { SpotsService } from './spots.service.js';
   imports: [AuthModule],
   controllers: [SpotsController],
   providers: [SpotsService],
+  // いいね・コメントが、閲覧できる投稿かの確認に使う
+  exports: [SpotsService],
 })
 export class SpotsModule {}

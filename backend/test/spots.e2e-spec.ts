@@ -444,6 +444,9 @@ describe('Spots (e2e)', () => {
         visibility: 'public',
         author: { id: owner.id, name: 'user-owner' },
         isMine: true,
+        // 一覧のカードに出すいいね数・コメント数(新しい投稿なので 0)
+        likeCount: 0,
+        commentCount: 0,
         createdAt: expect.any(String),
       });
     });

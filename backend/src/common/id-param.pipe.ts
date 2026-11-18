@@ -28,3 +28,11 @@ export class UserIdParamPipe implements PipeTransform<string, number> {
     return parseId(value, 'ユーザーが見つかりません。');
   }
 }
+
+// コメントの ID 用
+@Injectable()
+export class CommentIdParamPipe implements PipeTransform<string, number> {
+  transform(value: string): number {
+    return parseId(value, 'コメントが見つかりません。');
+  }
+}

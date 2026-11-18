@@ -1,75 +1,33 @@
-# Nuxt Minimal Starter
+# frontend(Nuxt SPA)
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+TripDiary の画面です。Nuxt 4(SPA、`ssr: false`)+ Pinia + Tailwind CSS 4。全体の説明とローカルでの起動手順は、[ルートの README](../README.md) を参照してください。
 
-## Setup
-
-Make sure to install dependencies:
+## 起動
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
+npm run dev     # http://localhost:5173
 ```
 
-## Development Server
+開発サーバーは `/api` をバックエンド(既定 `http://localhost:3000/api`)へ転送します。転送先は環境変数 `API_PROXY_TARGET` で変えられます。バックエンドを先に起動してください。
 
-Start the development server on `http://localhost:3000`:
+## コマンド
 
-```bash
-# npm
-npm run dev
+| コマンド | 内容 |
+|---|---|
+| `npm run dev` | 開発サーバー |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | 型検査(`nuxt typecheck`) |
+| `npm test` | 単体テスト(Vitest + Vue Test Utils。Windows では PowerShell から実行) |
+| `npm run generate` | 静的ファイルを出力(`.output/public`。S3 + CloudFront で配信する) |
 
-# pnpm
-pnpm dev
+## 構成(`app/`)
 
-# yarn
-yarn dev
+| ディレクトリ | 役割 |
+|---|---|
+| `pages/` | 画面(ホーム、ログイン、スポット詳細・投稿・編集、マイリスト、プロフィールなど。URL は [docs/21_画面設計.md](../docs/21_画面設計.md)) |
+| `components/` | 部品(スポットのカード、コメント欄、いいねなど) |
+| `composables/` `stores/` | API 呼び出し・認証の状態(Pinia) |
+| `utils/` | 共通の関数 |
 
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+画面は、E2E(`../e2e`)から見つけやすいよう、操作する要素に `data-testid` を付けています。地図とダミーデータ(`/mock`)は準備中です。

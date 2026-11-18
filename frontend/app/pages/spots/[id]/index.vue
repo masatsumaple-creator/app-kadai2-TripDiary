@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
 import { ApiError } from '~/utils/api'
 import { visibilityLabels } from '~/utils/spotMeta'
 import {
@@ -67,6 +68,32 @@ async function remove() {
     error.value = e instanceof ApiError ? e.message : '削除できませんでした。'
   } finally {
     deleting.value = false
+  }
+}
+
+const auth = useAuthStore()
+const liking = ref(false)
+
+// いいね/取り消しの切り替え。結果(件数と、いいね済みか)はサーバーの応答で更新する
+async function toggleLike() {
+  if (!spot.value) return
+  // 未ログインなら、ログインしてからこの画面へ戻す(自動ではいいねしない)
+  if (!auth.isLoggedIn) {
+    await navigateTo({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  liking.value = true
+  error.value = ''
+  try {
+    const state = spot.value.liked
+      ? await api.unlike(spot.value.id)
+      : await api.like(spot.value.id)
+    spot.value = { ...spot.value, ...state }
+  } catch (e) {
+    error.value =
+      e instanceof ApiError ? e.message : 'いいねの操作に失敗しました。'
+  } finally {
+    liking.value = false
   }
 }
 
@@ -158,6 +185,15 @@ watch(id, load, { immediate: true })
       >
         {{ error }}
       </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <LikeButton
+          :liked="spot.liked"
+          :count="spot.likeCount"
+          :pending="liking"
+          :readonly="spot.isMine"
+          @toggle="toggleLike"
+        />
+      </div>
       <div v-if="spot.isMine" class="flex gap-2">
         <NuxtLink
           :to="`/spots/${spot.id}/edit`"
@@ -176,6 +212,8 @@ watch(id, load, { immediate: true })
           削除
         </button>
       </div>
+
+      <SpotComments v-model:count="spot.commentCount" :spot-id="spot.id" />
 
       <section
         v-if="nearby.length"

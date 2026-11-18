@@ -2,6 +2,7 @@ import { useAuthStore } from '~/stores/auth'
 import {
   buildListQuery,
   type ListParams,
+  type LikeState,
   type Spot,
   type SpotInput,
   type SpotListResponse,
@@ -20,5 +21,9 @@ export function useSpotsApi() {
       authFetch<Spot>(`/api/spots/${id}`, { method: 'PUT', json: input }),
     remove: (id: number) =>
       authFetch<undefined>(`/api/spots/${id}`, { method: 'DELETE' }),
+    like: (id: number) =>
+      authFetch<LikeState>(`/api/spots/${id}/like`, { method: 'POST' }),
+    unlike: (id: number) =>
+      authFetch<LikeState>(`/api/spots/${id}/like`, { method: 'DELETE' }),
   }
 }

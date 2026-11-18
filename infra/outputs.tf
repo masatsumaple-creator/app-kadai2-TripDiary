@@ -21,3 +21,24 @@ output "security_group_ids" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.backend.repository_url
 }
+
+output "db_address" {
+  value = aws_db_instance.main.address
+}
+
+output "db_port" {
+  value = aws_db_instance.main.port
+}
+
+output "db_name" {
+  value = aws_db_instance.main.db_name
+}
+
+output "db_master_secret_arn" {
+  description = "RDS が作った、DB のマスター認証情報の Secrets Manager の ARN"
+  value       = aws_db_instance.main.master_user_secret[0].secret_arn
+}
+
+output "jwt_secret_arn" {
+  value = aws_secretsmanager_secret.jwt_secret.arn
+}

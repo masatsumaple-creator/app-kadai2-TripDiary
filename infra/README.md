@@ -11,7 +11,7 @@ TripDiary を AWS にデプロイするための Terraform。設計は `docs/22_
 | 層 | ファイル | 費用 |
 |---|---|---|
 | L1 | `bootstrap/`、`versions.tf`、`variables.tf`、`network.tf`、`ecr.tf`、`budgets.tf` | ほぼ無料(IPv4 を付けるまで) |
-| L2 | `rds.tf`、`secrets.tf` | **RDS が課金開始** |
+| L2 | `rds.tf`、`secrets.tf` | **RDS が課金開始**(確認済み。確認後は同日 destroy) |
 | L3 | `alb.tf`、`ecs.tf`、`iam.tf` | **ALB・Fargate・公開 IPv4 が課金開始** |
 | L4 | `s3_frontend.tf`、`cloudfront.tf` | ほぼ無料 |
 | L5 | `github_oidc.tf`(+ `.github/workflows/deploy.yml`) | なし |

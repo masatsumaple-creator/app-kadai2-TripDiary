@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
   # state は S3 に置く。バケット名は、backend.hcl(gitignore)で渡す:

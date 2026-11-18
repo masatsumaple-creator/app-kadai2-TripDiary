@@ -1,16 +1,46 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { viewableSpotsWhere } from '../spots/spot-visibility.js';
 
-export interface UserProfile {
+export class UserProfile {
+  @ApiProperty({ type: 'integer', example: 1 })
   id: number;
+
+  @ApiProperty({ type: 'string', example: 'はるか' })
   name: string;
+
+  @ApiProperty({
+    type: 'integer',
+    minimum: 0,
+    description: 'フォロワー数(このユーザーをフォローしている人)',
+  })
   followerCount: number;
+
+  @ApiProperty({
+    type: 'integer',
+    minimum: 0,
+    description: 'フォロー数(このユーザーがフォローしている人)',
+  })
   followingCount: number;
+
   // 閲覧者が見られる投稿の数(他人の非公開などは数えない)
+  @ApiProperty({
+    type: 'integer',
+    minimum: 0,
+    description:
+      '閲覧者が見られる投稿の数(他人の非公開・フォロワー限定は、権限がなければ数えない)',
+  })
   spotCount: number;
+
+  @ApiProperty({ type: 'boolean', description: '閲覧者本人のプロフィールか' })
   isMe: boolean;
+
+  @ApiProperty({
+    type: 'boolean',
+    description: '閲覧者がこのユーザーをフォローしているか(未ログインは false)',
+  })
   isFollowing: boolean;
 }
 

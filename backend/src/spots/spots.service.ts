@@ -1,9 +1,11 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
+import { UserSummary } from '../common/api-doc.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { viewableSpotsWhere } from './spot-visibility.js';
+import { SpotInputDto, VISIBILITIES } from './dto/spot.dto.js';
 import type { Visibility } from './dto/spot.dto.js';
-import { SpotInputDto } from './dto/spot.dto.js';
 import { DEFAULT_PAGE_SIZE } from '../common/page-query.dto.js';
 import { ListSpotsQueryDto } from './dto/list-spots.dto.js';
 
@@ -29,41 +31,106 @@ interface SpotRecord {
   _count: { likes: number; comments: number };
 }
 
-export interface SpotResponse {
+export class SpotResponse {
+  @ApiProperty({ type: 'integer', example: 1 })
   id: number;
+
+  @ApiProperty({ type: 'string', example: '清水寺' })
   name: string;
+
+  @ApiProperty({ type: 'string', nullable: true, description: '感想' })
   review: string | null;
+
+  @ApiProperty({ type: 'string', nullable: true, description: '住所' })
   address: string | null;
+
+  @ApiProperty({
+    type: 'number',
+    nullable: true,
+    description: '緯度(閲覧できない人には、そもそも投稿ごと返さない)',
+  })
   latitude: number | null;
+
+  @ApiProperty({ type: 'number', nullable: true, description: '経度' })
   longitude: number | null;
+
+  @ApiProperty({
+    type: [String],
+    description: 'エリアタグ(都道府県名)。都道府県の並び順(JIS コード順)',
+    example: ['京都府'],
+  })
   areas: string[];
+
+  @ApiProperty({ enum: VISIBILITIES })
   visibility: Visibility;
-  author: { id: number; name: string };
+
+  @ApiProperty({ type: () => UserSummary })
+  author: UserSummary;
+
+  @ApiProperty({ type: 'boolean', description: '閲覧者本人の投稿か' })
   isMine: boolean;
+
+  @ApiProperty({ type: 'integer', minimum: 0 })
   likeCount: number;
+
+  @ApiProperty({ type: 'integer', minimum: 0 })
   commentCount: number;
+
   // 閲覧者がいいね済みか(未ログインは false)
+  @ApiProperty({
+    type: 'boolean',
+    description: '閲覧者がいいね済みか(未ログインは false)',
+  })
   liked: boolean;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
   createdAt: Date;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
   updatedAt: Date;
 }
 
 // 一覧用の要約。感想・住所・緯度経度は含めない(詳細で取得する)
-export interface SpotListItem {
+export class SpotListItem {
+  @ApiProperty({ type: 'integer', example: 1 })
   id: number;
+
+  @ApiProperty({ type: 'string', example: '清水寺' })
   name: string;
+
+  @ApiProperty({ type: [String], example: ['京都府'] })
   areas: string[];
+
+  @ApiProperty({ enum: VISIBILITIES })
   visibility: Visibility;
-  author: { id: number; name: string };
+
+  @ApiProperty({ type: () => UserSummary })
+  author: UserSummary;
+
+  @ApiProperty({ type: 'boolean', description: '閲覧者本人の投稿か' })
   isMine: boolean;
+
+  @ApiProperty({ type: 'integer', minimum: 0 })
   likeCount: number;
+
+  @ApiProperty({ type: 'integer', minimum: 0 })
   commentCount: number;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
   createdAt: Date;
 }
 
-export interface SpotListResponse {
+export class SpotListResponse {
+  @ApiProperty({ type: () => [SpotListItem], description: '新着順(ID の降順)' })
   items: SpotListItem[];
+
   // 次のページがなければ null。あれば、次のリクエストの cursor に渡す
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description:
+      '次のページがなければ null。あれば、次のリクエストの cursor に渡す',
+  })
   nextCursor: number | null;
 }
 

@@ -104,6 +104,29 @@ test.describe('スマートフォン幅', () => {
     await expect(page.getByTestId('edit')).toBeInViewport()
   })
 
+  test('プロフィールが、横にはみ出さない。フォローのボタンを押せ、タブバーのプロフィールから自分の画面へ移動できる', async ({
+    page,
+    request,
+  }) => {
+    const author = await registerUser(request, 'mobile')
+    const reader = await registerUser(request, 'mobile')
+    for (let i = 0; i < 3; i++) await createSpot(request, author, { name: uniqueName('プロフィール') })
+    await signIn(page, reader)
+
+    await page.goto(`/users/${author.id}`)
+    await expect(page.getByTestId('profile-name')).toBeVisible()
+    await expectNoHorizontalScroll(page)
+    await expect(page.getByTestId('follow-button')).toBeInViewport()
+    await page.getByTestId('follow-button').click()
+    await expect(page.getByTestId('follow-button')).toHaveText('フォロー中')
+
+    // 下部のタブバーから、自分のプロフィールへ(フォロー数が反映されている)
+    await page.locator('nav.fixed').getByRole('link', { name: 'プロフィール' }).click()
+    await expect(page).toHaveURL((url) => url.pathname === `/users/${reader.id}`)
+    await expect(page.getByTestId('following-count')).toHaveText('1')
+    await expectNoHorizontalScroll(page)
+  })
+
   test('スマートフォン幅でも、アクセシビリティの違反がない(一覧・フォーム)', async ({ page, request }) => {
     const user = await registerUser(request, 'mobile')
     await createSpot(request, user, { areas: ['愛媛県'] })

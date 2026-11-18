@@ -116,7 +116,15 @@ watch(id, load, { immediate: true })
           }}</span>
         </p>
         <p class="mt-1 text-sm text-gray-500">
-          投稿者: {{ spot.author.name }} ・ {{ date(spot.createdAt) }}
+          投稿者:
+          <NuxtLink
+            :to="`/users/${spot.author.id}`"
+            class="text-sky-700 underline"
+            data-testid="author-link"
+          >
+            {{ spot.author.name }}
+          </NuxtLink>
+          ・ {{ date(spot.createdAt) }}
         </p>
       </div>
 

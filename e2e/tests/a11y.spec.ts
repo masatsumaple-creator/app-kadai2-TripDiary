@@ -61,4 +61,25 @@ test.describe('アクセシビリティ(WCAG A/AA)', () => {
     await expect(page.getByTestId('not-found')).toBeVisible()
     expect(await scanA11y(page)).toEqual([])
   })
+
+  test('プロフィール(他人: フォローのボタンと投稿の一覧あり)', async ({ page, request }) => {
+    const author = await registerUser(request, 'a11y')
+    const reader = await registerUser(request, 'a11y')
+    await createSpot(request, author)
+    await signIn(page, reader)
+    await page.goto(`/users/${author.id}`)
+    await expect(page.getByTestId('follow-button')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+
+    // フォロー中の状態(ボタンの見た目が変わる)
+    await page.getByTestId('follow-button').click()
+    await expect(page.getByTestId('follow-button')).toHaveText('フォロー中')
+    expect(await scanA11y(page)).toEqual([])
+  })
+
+  test('プロフィール(存在しないユーザー)', async ({ page }) => {
+    await page.goto('/users/2147483647')
+    await expect(page.getByTestId('not-found')).toBeVisible()
+    expect(await scanA11y(page)).toEqual([])
+  })
 })

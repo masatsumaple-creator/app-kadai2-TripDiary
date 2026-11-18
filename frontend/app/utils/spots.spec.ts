@@ -18,6 +18,8 @@ const item = (id: number, overrides: Partial<SpotListItem> = {}): SpotListItem =
   visibility: 'public',
   author: { id: 1, name: 'はるか' },
   isMine: false,
+  likeCount: 0,
+  commentCount: 0,
   createdAt: '2026-11-14T00:00:00.000Z',
   ...overrides,
 })
@@ -50,6 +52,7 @@ describe('spotToForm', () => {
       address: null,
       latitude: null,
       longitude: null,
+      liked: false,
       updatedAt: '2026-11-14T00:00:00.000Z',
     }
     expect(spotToForm(spot)).toEqual({
@@ -64,7 +67,15 @@ describe('spotToForm', () => {
   })
 
   it('エリアの配列は複製する(フォームの編集が元のデータに影響しない)', () => {
-    const spot: Spot = { ...item(1), review: null, address: null, latitude: null, longitude: null, updatedAt: '' }
+    const spot: Spot = {
+      ...item(1),
+      review: null,
+      address: null,
+      latitude: null,
+      longitude: null,
+      liked: false,
+      updatedAt: '',
+    }
     const form = spotToForm(spot)
     form.areas.push('大阪府')
     expect(spot.areas).toEqual(['京都府'])
@@ -78,16 +89,25 @@ describe('buildListQuery', () => {
     expect(buildListQuery({ area: '京都府' })).toBe('?area=%E4%BA%AC%E9%83%BD%E5%BA%9C')
     expect(buildListQuery({ cursor: 12, limit: 6 })).toBe('?cursor=12&limit=6')
   })
+
+  it('ユーザーの投稿(author)とフォロー中(following)の絞り込みを指定できる', () => {
+    expect(buildListQuery({ author: 7 })).toBe('?author=7')
+    expect(buildListQuery({ following: true })).toBe('?following=true')
+    // following が false のときは付けない(サーバーの既定と同じ)
+    expect(buildListQuery({ following: false })).toBe('')
+    expect(buildListQuery({ author: 7, area: '京都府', cursor: 3 })).toBe('?area=%E4%BA%AC%E9%83%BD%E5%BA%9C&author=7&cursor=3')
+  })
 })
 
 describe('toCardSpot / hueOf', () => {
-  it('一覧の項目をカード表示用にする(まだない項目は持たせない)', () => {
-    expect(toCardSpot(item(3))).toEqual({
+  it('一覧の項目をカード表示用にする(いいね数を含む。写真はまだないので持たせない)', () => {
+    expect(toCardSpot(item(3, { likeCount: 12 }))).toEqual({
       id: 3,
       name: 'spot-3',
       areas: ['京都府'],
       visibility: 'public',
       authorName: 'はるか',
+      likes: 12,
     })
   })
 

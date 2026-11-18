@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { findNearbySpots, findSpot, mockToCard, userIdByName } from '~/utils/mockData'
+import { findNearbySpots, findSpot, mockToCard } from '~/utils/mockData'
 import { visibilityLabels } from '~/utils/spotMeta'
 
 const route = useRoute()
@@ -50,8 +50,7 @@ function addComment() {
         <span class="rounded bg-amber-100 px-2 py-0.5 text-amber-800">{{ visibilityLabels[spot.visibility] }}</span>
       </p>
       <p class="mt-1 text-sm text-gray-500">
-        投稿者:
-        <NuxtLink :to="`/users/${userIdByName(spot.author)}`" class="text-sky-700">{{ spot.author }}</NuxtLink>
+        投稿者: {{ spot.author }}
       </p>
     </div>
 

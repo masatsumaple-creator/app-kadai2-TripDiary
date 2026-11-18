@@ -12,7 +12,7 @@ describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const emailOf = (label: string) => `e2e-${label}-${suffix}@example.com`;
+  const emailOf = (label: string) => `e2e-auth-${label}-${suffix}@example.com`;
   const password = 'password-1234';
 
   const refreshCookie = (res: request.Response): string | undefined =>
@@ -38,7 +38,14 @@ describe('Auth (e2e)', () => {
 
   afterAll(async () => {
     await prisma.user.deleteMany({
-      where: { email: { endsWith: `-${suffix}@example.com` } },
+      // ファイルごとに異なる接頭辞で、範囲を狭くして削除する。
+      // 全ユーザーを走査する条件だと、並列に動く他のテストファイルの書き込みと、ロックが競合してデッドロックになる
+      where: {
+        AND: [
+          { email: { startsWith: 'e2e-auth-' } },
+          { email: { endsWith: `-${suffix}@example.com` } },
+        ],
+      },
     });
     await app.close();
   });

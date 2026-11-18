@@ -1146,6 +1146,233 @@
           "comments"
         ]
       }
+    },
+    "/api/spots/{id}/list": {
+      "put": {
+        "description": "「行きたい」(wishlist)や「訪問済み」(visited)で、自分のリストに入れる。すでに入っている投稿の状態も、この API で変える(「行きたい」→「訪問済み」など)。閲覧できる投稿だけが対象(閲覧できない投稿は 404)。自分の投稿は、作成時に自動で「訪問済み」になるため、変更できない(400、OWN_SPOT_IN_LIST)。同じ状態で何度実行しても、同じ結果を返す。",
+        "operationId": "ListsController_set",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetListStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListEntryState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "マイリストに入れる / 状態を変える",
+        "tags": [
+          "lists"
+        ]
+      },
+      "delete": {
+        "description": "リストにない投稿でも、同じ結果を返す。自分の投稿は外せない(400、OWN_SPOT_IN_LIST)。",
+        "operationId": "ListsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListEntryState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "マイリストから外す",
+        "tags": [
+          "lists"
+        ]
+      }
+    },
+    "/api/me/list": {
+      "get": {
+        "description": "状態(visited / wishlist)ごとの一覧を、リストに入れた新しい順で返す。閲覧できない投稿は含めない。カーソル方式のページング(nextCursor を、次のリクエストの cursor に渡す)。counts は、状態ごとの件数(タブの表示用)。リストは本人だけが見られる。",
+        "operationId": "ListsController_myList",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "前のページの最後の ID(応答の nextCursor の値)。省略すると最初のページ",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 ページの件数",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "表示する状態。省略すると visited(訪問済み)",
+            "schema": {
+              "default": "visited",
+              "type": "string",
+              "enum": [
+                "visited",
+                "wishlist"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "自分のマイリスト",
+        "tags": [
+          "lists"
+        ]
+      }
     }
   },
   "info": {
@@ -1472,6 +1699,15 @@
             "type": "boolean",
             "description": "閲覧者がいいね済みか(未ログインは false)"
           },
+          "listStatus": {
+            "type": "string",
+            "enum": [
+              "visited",
+              "wishlist"
+            ],
+            "nullable": true,
+            "description": "閲覧者のマイリストでの状態(visited: 訪問済み、wishlist: 行きたい、null: リストにない・未ログイン)。自分の投稿は、常に visited"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1495,6 +1731,7 @@
           "likeCount",
           "commentCount",
           "liked",
+          "listStatus",
           "createdAt",
           "updatedAt"
         ]
@@ -1726,6 +1963,89 @@
         },
         "required": [
           "body"
+        ]
+      },
+      "SetListStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "visited",
+              "wishlist"
+            ],
+            "description": "visited: 訪問済み、wishlist: 行きたい",
+            "example": "wishlist"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ListEntryState": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "visited",
+              "wishlist"
+            ],
+            "nullable": true,
+            "description": "操作後の状態。リストから外した場合は null"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ListCounts": {
+        "type": "object",
+        "properties": {
+          "visited": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "訪問済みの件数(閲覧できる投稿だけ)"
+          },
+          "wishlist": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "行きたいの件数(閲覧できる投稿だけ)"
+          }
+        },
+        "required": [
+          "visited",
+          "wishlist"
+        ]
+      },
+      "MyListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "リストに入れた新しい順(登録の新しい順)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpotListItem"
+            }
+          },
+          "nextCursor": {
+            "type": "integer",
+            "nullable": true,
+            "description": "次のページがなければ null。あれば、次のリクエストの cursor に渡す(投稿の ID ではなく、リストの行の ID。値の意味に依存しない)"
+          },
+          "counts": {
+            "description": "状態ごとの件数(タブの表示用)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListCounts"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "counts"
         ]
       }
     }

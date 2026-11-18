@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { retryOnWriteConflict } from '../prisma/retry.js';
 
 export class FollowState {
   @ApiProperty({
@@ -36,17 +37,21 @@ export class FollowsService {
     }
     await this.assertUserExists(followeeId);
     // 同時に 2 回呼ばれても、一意制約(組み合わせは 1 つ)で重複せず、エラーにもしない
-    await this.prisma.follow.createMany({
-      data: [{ followerId, followeeId }],
-      skipDuplicates: true,
-    });
+    await retryOnWriteConflict(() =>
+      this.prisma.follow.createMany({
+        data: [{ followerId, followeeId }],
+        skipDuplicates: true,
+      }),
+    );
     return this.state(followerId, followeeId);
   }
 
   // フォローを解除する。フォローしていなくても同じ結果を返す
   async unfollow(followerId: number, followeeId: number): Promise<FollowState> {
     await this.assertUserExists(followeeId);
-    await this.prisma.follow.deleteMany({ where: { followerId, followeeId } });
+    await retryOnWriteConflict(() =>
+      this.prisma.follow.deleteMany({ where: { followerId, followeeId } }),
+    );
     return this.state(followerId, followeeId);
   }
 

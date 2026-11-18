@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { retryOnWriteConflict } from '../prisma/retry.js';
 import { SpotsService } from '../spots/spots.service.js';
 
 export class LikeState {
@@ -37,17 +38,21 @@ export class LikesService {
         '自分の投稿にはいいねできません。',
       );
     }
-    await this.prisma.like.createMany({
-      data: [{ userId, spotId }],
-      skipDuplicates: true,
-    });
+    await retryOnWriteConflict(() =>
+      this.prisma.like.createMany({
+        data: [{ userId, spotId }],
+        skipDuplicates: true,
+      }),
+    );
     return this.state(spotId, userId);
   }
 
   // いいねを取り消す。いいねしていなくても同じ結果を返す
   async unlike(spotId: number, userId: number): Promise<LikeState> {
     await this.spots.findViewableSpot(spotId, userId);
-    await this.prisma.like.deleteMany({ where: { userId, spotId } });
+    await retryOnWriteConflict(() =>
+      this.prisma.like.deleteMany({ where: { userId, spotId } }),
+    );
     return this.state(spotId, userId);
   }
 

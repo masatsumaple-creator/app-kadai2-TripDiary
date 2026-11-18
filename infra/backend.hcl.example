@@ -1,0 +1,5 @@
+# infra/backend.hcl にコピーして使う(backend.hcl は gitignore されている)。
+# バケット名は、bootstrap の出力(terraform output state_bucket)の値にする。
+# バケット名にはアカウント ID が含まれるため、リポジトリには書かない。
+bucket = "tripdiary-tfstate-<アカウント ID>"
+region = "ap-northeast-1"

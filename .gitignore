@@ -5,3 +5,14 @@
 .env
 .env.*
 !.env.example
+
+# Terraform(infra/): state・接続先・個人情報(メールアドレス)・ダウンロードしたプロバイダーは、コミットしない。
+# .terraform.lock.hcl(プロバイダーのバージョンの固定)は、コミットする
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/*.tfplan
+infra/**/tfplan
+infra/backend.hcl
+infra/**/*.tfvars
+!infra/**/*.tfvars.example

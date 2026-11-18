@@ -1,0 +1,1733 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "description": "アプリと DB の状態を確認する。ログイン不要。DB に接続できないときは 500。",
+        "operationId": "AppController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        },
+        "summary": "ヘルスチェック",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "description": "ユーザーを作成し、そのままログインした状態にする。メールアドレスは小文字に正規化され、重複は 409。",
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "headers": {
+              "Set-Cookie": {
+                "description": "リフレッシュトークン(refresh_token)。HttpOnly・SameSite=Strict・Path=/api/auth(本番は Secure も付く)。有効期限 14 日。使うたびに作り直される",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "登録できた。アクセストークンを本文で、リフレッシュトークンを Cookie で返す",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "すでに登録されている(CONFLICT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "新規登録",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "パスワードの誤りと、未登録のメールアドレスは、同じ 401(INVALID_CREDENTIALS)を返す(アカウントの有無を知らせない)。",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "headers": {
+              "Set-Cookie": {
+                "description": "リフレッシュトークン(refresh_token)。HttpOnly・SameSite=Strict・Path=/api/auth(本番は Secure も付く)。有効期限 14 日。使うたびに作り直される",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "ログイン",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "description": "Cookie のリフレッシュトークンで、新しいアクセストークンを発行する。リフレッシュトークンは使い捨てで、使うと新しいものに置き換わる(ローテーション)。使用済みのトークンが再び使われた場合は、盗用の可能性があるため、そのユーザーの全トークンを失効させて 401 を返す。",
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "headers": {
+              "Set-Cookie": {
+                "description": "リフレッシュトークン(refresh_token)。HttpOnly・SameSite=Strict・Path=/api/auth(本番は Secure も付く)。有効期限 14 日。使うたびに作り直される",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "refresh_token": []
+          }
+        ],
+        "summary": "アクセストークンの再発行",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Cookie のリフレッシュトークンを失効させ、Cookie を消す。ログインしていなくても 204(何度実行しても同じ)。",
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "ログアウトした"
+          }
+        },
+        "security": [
+          {
+            "refresh_token": []
+          }
+        ],
+        "summary": "ログアウト",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUser"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "ログイン中のユーザー本人の情報",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/spots": {
+      "post": {
+        "description": "投稿者は、常にログイン中のユーザーになる(リクエストでは指定できない。指定すると 400)。",
+        "operationId": "SpotsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpotInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpotResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "投稿を作成",
+        "tags": [
+          "spots"
+        ]
+      },
+      "get": {
+        "description": "ログインは任意。閲覧できる投稿だけを返す(未ログイン: 公開のみ。ログイン済み: 公開 + 自分の投稿 + フォローしている人のフォロワー限定)。カーソル方式のページング: 応答の nextCursor を、次のリクエストの cursor に渡す(null なら最後のページ)。トークンを付けたのに不正・期限切れなら 401(未ログイン扱いにはしない)。",
+        "operationId": "SpotsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "前のページの最後の ID(応答の nextCursor の値)。省略すると最初のページ",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 ページの件数",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "area",
+            "required": false,
+            "in": "query",
+            "description": "エリアタグ(都道府県名)で絞り込む。マスタにない名前は 400",
+            "schema": {
+              "example": "京都府",
+              "type": "string"
+            }
+          },
+          {
+            "name": "author",
+            "required": false,
+            "in": "query",
+            "description": "このユーザー ID の投稿だけにする(閲覧できる投稿のみ)。存在しない ID は空で返す",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "following",
+            "required": false,
+            "in": "query",
+            "description": "'true' なら、フォローしている人の投稿だけ(自分の投稿は含まない)。要ログイン(未ログインは 401)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpotListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {}
+        ],
+        "summary": "投稿の一覧(新着順)",
+        "tags": [
+          "spots"
+        ]
+      }
+    },
+    "/api/spots/{id}": {
+      "get": {
+        "description": "ログインは任意。閲覧できない投稿は、存在しない投稿と同じ 404 を返す(存在を知らせない)。",
+        "operationId": "SpotsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpotResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {}
+        ],
+        "summary": "投稿の詳細",
+        "tags": [
+          "spots"
+        ]
+      },
+      "put": {
+        "description": "本人だけ。省略した項目は未入力(null)になる。閲覧できない投稿は 404、閲覧できるが本人でない投稿は 403。",
+        "operationId": "SpotsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpotInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpotResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "権限がない(FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "投稿を更新(全項目を置き換える)",
+        "tags": [
+          "spots"
+        ]
+      },
+      "delete": {
+        "description": "本人だけ。いいね・コメント・エリアタグの紐づけも一緒に消える。",
+        "operationId": "SpotsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "削除した"
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "権限がない(FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "投稿を削除",
+        "tags": [
+          "spots"
+        ]
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "description": "ログインは任意。表示名、フォロー数・フォロワー数、閲覧者が見られる投稿の数を返す。メールアドレスなどの個人情報は含めない。そのユーザーの投稿一覧は、GET /api/spots?author=<ID> で取得する。",
+        "operationId": "UsersController_getProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {}
+        ],
+        "summary": "プロフィール",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/follow": {
+      "post": {
+        "description": "承認は不要。すでにフォローしていても同じ結果を返す(何度実行しても同じ。同時に実行しても重複しない)。自分自身は 400(CANNOT_FOLLOW_SELF)。フォローすると、相手のフォロワー限定の投稿が見られるようになる。",
+        "operationId": "FollowsController_follow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "フォローする",
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "description": "フォローしていなくても同じ結果を返す。解除すると、相手のフォロワー限定の投稿は見られなくなる。",
+        "operationId": "FollowsController_unfollow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "フォローを解除する",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/spots/{id}/like": {
+      "post": {
+        "description": "閲覧できる投稿だけが対象(閲覧できない投稿は 404)。すでにいいね済みでも同じ結果を返す(1 ユーザー 1 投稿につき 1 回)。自分の投稿には 400(CANNOT_LIKE_OWN_SPOT)。",
+        "operationId": "LikesController_like",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "いいねする",
+        "tags": [
+          "likes"
+        ]
+      },
+      "delete": {
+        "description": "いいねしていなくても同じ結果を返す。",
+        "operationId": "LikesController_unlike",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "いいねを取り消す",
+        "tags": [
+          "likes"
+        ]
+      }
+    },
+    "/api/spots/{spotId}/comments": {
+      "get": {
+        "description": "ログインは任意。閲覧できる投稿のコメントだけが読める(閲覧できない投稿は 404)。古い順(ID の昇順)で、カーソル方式のページング(nextCursor を、次のリクエストの cursor に渡す)。各コメントの canDelete は、閲覧者が削除できるか。",
+        "operationId": "CommentsController_list",
+        "parameters": [
+          {
+            "name": "spotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "前のページの最後の ID(応答の nextCursor の値)。省略すると最初のページ",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 ページの件数",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {}
+        ],
+        "summary": "コメントの一覧(古い順)",
+        "tags": [
+          "comments"
+        ]
+      },
+      "post": {
+        "description": "閲覧できる投稿だけが対象。投稿者本人も、自分の投稿にコメントできる(質問への返信など)。コメントした人は、常にログイン中のユーザー。",
+        "operationId": "CommentsController_create",
+        "parameters": [
+          {
+            "name": "spotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "コメントを投稿",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/spots/{spotId}/comments/{commentId}": {
+      "delete": {
+        "description": "削除できるのは、コメントした本人と、その投稿の投稿者だけ(それ以外は 403)。閲覧できない投稿、存在しないコメント、別の投稿のコメントは 404。",
+        "operationId": "CommentsController_remove",
+        "parameters": [
+          {
+            "name": "spotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "削除した"
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "権限がない(FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "コメントを削除",
+        "tags": [
+          "comments"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "TripDiary API",
+    "description": "旅行の記録を、写真・感想・住所つきで残し、地図と一緒に共有するアプリの API。\n\n## 認証\n- ログイン(`POST /api/auth/login`)で、アクセストークン(JWT、有効期限 15 分)を本文で、リフレッシュトークンを HttpOnly の Cookie(`refresh_token`)で受け取る。\n- アクセストークンは `Authorization: Bearer <token>` で送る。期限が切れたら `POST /api/auth/refresh` で再発行する。\n- 「ログインは任意」の API は、トークンがなければ未ログインとして扱う。トークンを付けたのに不正・期限切れなら 401。\n\n## エラー応答\n- どのエラーも `{ code, message, fieldErrors? }` の形。入力エラーのときは、`fieldErrors` に項目名ごとのメッセージが入る。\n- 閲覧できない投稿・ユーザーは、存在しない場合と同じ 404 を返す(存在を知らせない)。\n\n## ページング\n- 一覧は、カーソル方式。応答の `nextCursor` を、次のリクエストの `cursor` に渡す(`null` なら最後のページ)。\n\n> この仕様書は、コードから自動生成している(`npm run openapi`)。仕様書(docs/ の文書)と食い違う場合は、docs/ の文書を正とする。",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      },
+      "refresh_token": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token"
+      }
+    },
+    "schemas": {
+      "HealthStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ],
+            "description": "アプリが動いている"
+          },
+          "db": {
+            "type": "string",
+            "enum": [
+              "up"
+            ],
+            "description": "データベースに接続できている(できない場合は、この API が 500 を返す)"
+          }
+        },
+        "required": [
+          "status",
+          "db"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "表示名(前後の空白は除く)",
+            "example": "はるか"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "description": "メールアドレス(小文字に正規化して保存)",
+            "example": "haruka@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 128,
+            "example": "your-password-here"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password"
+        ]
+      },
+      "AuthUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "はるか"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "haruka@example.com"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email"
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "アクセストークン(JWT、有効期限 15 分)。Authorization: Bearer で送る"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          }
+        },
+        "required": [
+          "accessToken",
+          "user"
+        ]
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "エラーの種類(例: VALIDATION_ERROR、UNAUTHORIZED、NOT_FOUND)",
+            "example": "VALIDATION_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "description": "利用者に表示できるメッセージ",
+            "example": "入力内容に誤りがあります。"
+          },
+          "fieldErrors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "入力エラーのとき、項目名ごとのメッセージ",
+            "example": {
+              "name": [
+                "場所名は 1〜100 文字で入力してください。"
+              ]
+            }
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "haruka@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "SpotInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "場所名(前後の空白は除く)",
+            "example": "清水寺"
+          },
+          "review": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 5000,
+            "description": "感想。空文字・省略は未入力(null)として扱う",
+            "example": "朝イチがおすすめ"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 255,
+            "description": "住所(自由記述)",
+            "example": "京都府京都市東山区清水1-294"
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -90,
+            "maximum": 90,
+            "description": "緯度。経度とどちらかを入れたら、両方必要",
+            "example": 34.9949
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -180,
+            "maximum": 180,
+            "description": "経度。緯度とどちらかを入れたら、両方必要",
+            "example": 135.785
+          },
+          "areas": {
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true,
+            "description": "エリアタグ(都道府県名)を 1〜3 個。重複不可。マスタにない名前は 400",
+            "example": [
+              "京都府"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "followers",
+              "private"
+            ],
+            "description": "公開範囲。public: 誰でも、followers: 投稿者のフォロワー、private: 本人のみ",
+            "example": "public"
+          }
+        },
+        "required": [
+          "name",
+          "areas",
+          "visibility"
+        ]
+      },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "はるか"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "SpotResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "清水寺"
+          },
+          "review": {
+            "type": "string",
+            "nullable": true,
+            "description": "感想"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "description": "住所"
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true,
+            "description": "緯度(閲覧できない人には、そもそも投稿ごと返さない)"
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true,
+            "description": "経度"
+          },
+          "areas": {
+            "description": "エリアタグ(都道府県名)。都道府県の並び順(JIS コード順)",
+            "example": [
+              "京都府"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "followers",
+              "private"
+            ]
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "isMine": {
+            "type": "boolean",
+            "description": "閲覧者本人の投稿か"
+          },
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "commentCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "liked": {
+            "type": "boolean",
+            "description": "閲覧者がいいね済みか(未ログインは false)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "review",
+          "address",
+          "latitude",
+          "longitude",
+          "areas",
+          "visibility",
+          "author",
+          "isMine",
+          "likeCount",
+          "commentCount",
+          "liked",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SpotListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "清水寺"
+          },
+          "areas": {
+            "example": [
+              "京都府"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "followers",
+              "private"
+            ]
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "isMine": {
+            "type": "boolean",
+            "description": "閲覧者本人の投稿か"
+          },
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "commentCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "areas",
+          "visibility",
+          "author",
+          "isMine",
+          "likeCount",
+          "commentCount",
+          "createdAt"
+        ]
+      },
+      "SpotListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "新着順(ID の降順)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpotListItem"
+            }
+          },
+          "nextCursor": {
+            "type": "integer",
+            "nullable": true,
+            "description": "次のページがなければ null。あれば、次のリクエストの cursor に渡す"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "はるか"
+          },
+          "followerCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "フォロワー数(このユーザーをフォローしている人)"
+          },
+          "followingCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "フォロー数(このユーザーがフォローしている人)"
+          },
+          "spotCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "閲覧者が見られる投稿の数(他人の非公開・フォロワー限定は、権限がなければ数えない)"
+          },
+          "isMe": {
+            "type": "boolean",
+            "description": "閲覧者本人のプロフィールか"
+          },
+          "isFollowing": {
+            "type": "boolean",
+            "description": "閲覧者がこのユーザーをフォローしているか(未ログインは false)"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "followerCount",
+          "followingCount",
+          "spotCount",
+          "isMe",
+          "isFollowing"
+        ]
+      },
+      "FollowState": {
+        "type": "object",
+        "properties": {
+          "isFollowing": {
+            "type": "boolean",
+            "description": "操作後に、ログイン中のユーザーがフォローしているか"
+          },
+          "followerCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "操作後の、相手のフォロワー数"
+          }
+        },
+        "required": [
+          "isFollowing",
+          "followerCount"
+        ]
+      },
+      "LikeState": {
+        "type": "object",
+        "properties": {
+          "liked": {
+            "type": "boolean",
+            "description": "操作後に、ログイン中のユーザーがいいね済みか"
+          },
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "操作後の、投稿のいいね数"
+          }
+        },
+        "required": [
+          "liked",
+          "likeCount"
+        ]
+      },
+      "CommentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "body": {
+            "type": "string",
+            "description": "本文。HTML としては解釈されず、入力のまま返る(表示側で、文字として表示する)"
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "閲覧者が削除できるか(コメントした本人、または、その投稿の投稿者)"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "author",
+          "createdAt",
+          "canDelete"
+        ]
+      },
+      "CommentListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "古い順(ID の昇順)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "integer",
+            "nullable": true,
+            "description": "次のページがなければ null。あれば、次のリクエストの cursor に渡す"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateCommentDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "コメント本文(前後の空白は除く)。HTML としては解釈されず、入力のまま返る",
+            "example": "来月行く予定です。おすすめの時間帯は?"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      }
+    }
+  }
+}

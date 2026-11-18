@@ -1,5 +1,7 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
+import { UserSummary } from '../common/api-doc.js';
 import { DEFAULT_PAGE_SIZE } from '../common/page-query.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SpotsService } from '../spots/spots.service.js';
@@ -8,18 +10,46 @@ import type {
   ListCommentsQueryDto,
 } from './dto/comment.dto.js';
 
-export interface CommentResponse {
+export class CommentResponse {
+  @ApiProperty({ type: 'integer', example: 1 })
   id: number;
+
+  @ApiProperty({
+    type: 'string',
+    description:
+      '本文。HTML としては解釈されず、入力のまま返る(表示側で、文字として表示する)',
+  })
   body: string;
-  author: { id: number; name: string };
+
+  @ApiProperty({ type: () => UserSummary })
+  author: UserSummary;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
   createdAt: Date;
+
   // 閲覧者が削除できるか(コメントした本人、または投稿者)
+  @ApiProperty({
+    type: 'boolean',
+    description:
+      '閲覧者が削除できるか(コメントした本人、または、その投稿の投稿者)',
+  })
   canDelete: boolean;
 }
 
-export interface CommentListResponse {
+export class CommentListResponse {
+  @ApiProperty({
+    type: () => [CommentResponse],
+    description: '古い順(ID の昇順)',
+  })
   items: CommentResponse[];
+
   // 次のページがなければ null。あれば、次のリクエストの cursor に渡す
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description:
+      '次のページがなければ null。あれば、次のリクエストの cursor に渡す',
+  })
   nextCursor: number | null;
 }
 

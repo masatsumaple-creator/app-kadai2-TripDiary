@@ -3,16 +3,10 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import { ApiError } from '../common/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { LoginDto, RegisterDto } from './dto/auth.dto.js';
+import { AuthUser, LoginDto, RegisterDto } from './dto/auth.dto.js';
 import { hashPassword, verifyPassword } from './password.js';
 
 export const REFRESH_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
-
-export interface AuthUser {
-  id: number;
-  name: string;
-  email: string;
-}
 
 export interface AuthResult {
   accessToken: string;

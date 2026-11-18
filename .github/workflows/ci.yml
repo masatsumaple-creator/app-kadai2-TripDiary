@@ -52,6 +52,9 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npm run build
+      # API 仕様書(docs/api/openapi.json)が、コードから生成した内容と一致するか確認する。
+      # 食い違うときは、`npm run openapi` で更新して、一緒にコミットする
+      - run: node dist/openapi/generate-openapi.js --check
       - run: npm test
       - run: npx prisma migrate deploy
       - run: npm run test:e2e

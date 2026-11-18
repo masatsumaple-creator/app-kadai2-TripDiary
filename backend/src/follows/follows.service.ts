@@ -1,9 +1,20 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-export interface FollowState {
+export class FollowState {
+  @ApiProperty({
+    type: 'boolean',
+    description: '操作後に、ログイン中のユーザーがフォローしているか',
+  })
   isFollowing: boolean;
+
+  @ApiProperty({
+    type: 'integer',
+    minimum: 0,
+    description: '操作後の、相手のフォロワー数',
+  })
   followerCount: number;
 }
 

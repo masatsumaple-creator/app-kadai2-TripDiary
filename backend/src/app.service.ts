@@ -1,8 +1,16 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
 
-export interface HealthStatus {
+export class HealthStatus {
+  @ApiProperty({ enum: ['ok'], description: 'アプリが動いている' })
   status: 'ok';
+
+  @ApiProperty({
+    enum: ['up'],
+    description:
+      'データベースに接続できている(できない場合は、この API が 500 を返す)',
+  })
   db: 'up';
 }
 

@@ -1,2 +1,5 @@
 # コンテナ内(Linux)で実行するシェルスクリプトは、Windows でも改行を LF に保つ
 *.sh text eol=lf
+
+# 生成物の API 仕様書は、改行を LF に保つ(生成結果との差分チェックで、改行の違いを誤検出しないため)
+docs/api/openapi.json text eol=lf

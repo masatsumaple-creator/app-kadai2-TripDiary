@@ -1,10 +1,21 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SpotsService } from '../spots/spots.service.js';
 
-export interface LikeState {
+export class LikeState {
+  @ApiProperty({
+    type: 'boolean',
+    description: '操作後に、ログイン中のユーザーがいいね済みか',
+  })
   liked: boolean;
+
+  @ApiProperty({
+    type: 'integer',
+    minimum: 0,
+    description: '操作後の、投稿のいいね数',
+  })
   likeCount: number;
 }
 

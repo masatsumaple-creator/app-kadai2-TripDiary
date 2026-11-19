@@ -1,11 +1,22 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AppService, HealthStatus } from './app.service.js';
+import { AppService, HealthStatus, LiveStatus } from './app.service.js';
 
 @ApiTags('health')
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
+
+  @Get('health/live')
+  @ApiOperation({
+    summary: '生存確認',
+    description:
+      'アプリのプロセスが応答できるかだけを確認する。ログイン不要。DB には依存せず、常に 200(ロードバランサーのヘルスチェック用)。',
+  })
+  @ApiOkResponse({ type: LiveStatus })
+  getLive(): LiveStatus {
+    return { status: 'ok' };
+  }
 
   @Get('health')
   @ApiOperation({

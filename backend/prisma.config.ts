@@ -2,6 +2,17 @@
 // npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
+import { resolveDatabaseUrl } from "./src/prisma/database-url.ts";
+
+// prisma generate は DB に接続しないため、接続先がなくても読み込めるようにする。
+// 接続が要る操作(migrate など)では、接続先がないと Prisma がエラーにする
+function databaseUrl(): string | undefined {
+  try {
+    return resolveDatabaseUrl();
+  } catch {
+    return undefined;
+  }
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -9,6 +20,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: databaseUrl(),
   },
 });

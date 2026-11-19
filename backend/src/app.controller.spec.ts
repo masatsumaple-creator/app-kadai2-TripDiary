@@ -21,6 +21,13 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
+  describe('health/live', () => {
+    it('DB に問い合わせず、常に ok を返す', () => {
+      expect(appController.getLive()).toEqual({ status: 'ok' });
+      expect(queryRaw).not.toHaveBeenCalled();
+    });
+  });
+
   describe('health', () => {
     it('returns ok when the database responds', async () => {
       queryRaw.mockResolvedValue([{ 1: 1 }]);

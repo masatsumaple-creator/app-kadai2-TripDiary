@@ -27,6 +27,13 @@ describe('Health (e2e)', () => {
       .expect({ status: 'ok', db: 'up' });
   });
 
+  it('/api/health/live (GET) はログイン不要で 200', () => {
+    return request(app.getHttpServer())
+      .get('/api/health/live')
+      .expect(200)
+      .expect({ status: 'ok' });
+  });
+
   afterEach(async () => {
     await app.close();
   });

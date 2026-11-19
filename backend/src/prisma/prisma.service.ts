@@ -1,10 +1,11 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { resolveDatabaseUrl } from './database-url.js';
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1'];
 
-// DATABASE_URL は Prisma CLI と共通の mysql:// 形式。アダプターは URL 文字列を
+// 接続先は Prisma CLI と共通の mysql:// 形式(resolveDatabaseUrl)。アダプターは URL 文字列を
 // そのまま受け取れないため、接続設定に分解して渡す。
 function createAdapter(databaseUrl: string): PrismaMariaDb {
   const url = new URL(databaseUrl);
@@ -22,11 +23,7 @@ function createAdapter(databaseUrl: string): PrismaMariaDb {
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
   constructor() {
-    const databaseUrl = process.env['DATABASE_URL'];
-    if (!databaseUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    super({ adapter: createAdapter(databaseUrl) });
+    super({ adapter: createAdapter(resolveDatabaseUrl()) });
   }
 
   async onModuleDestroy(): Promise<void> {

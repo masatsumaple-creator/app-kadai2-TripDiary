@@ -62,6 +62,7 @@ describe('OpenAPI (e2e)', () => {
     expect(documented).toEqual(
       [
         'GET /api/health',
+        'GET /api/health/live',
         'POST /api/auth/register',
         'POST /api/auth/login',
         'POST /api/auth/refresh',

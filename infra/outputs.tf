@@ -70,3 +70,20 @@ output "cloudfront_distribution_id" {
 output "frontend_bucket" {
   value = aws_s3_bucket.frontend.bucket
 }
+
+# GitHub のリポジトリの「変数」に設定する値(秘密情報ではない)。scripts/set-github-variables.mjs が、これを読んで設定する
+output "github_actions_variables" {
+  value = {
+    AWS_REGION                 = var.region
+    AWS_ROLE_ARN               = aws_iam_role.github_deploy.arn
+    ECR_REPOSITORY_URL         = aws_ecr_repository.backend.repository_url
+    ECS_CLUSTER                = aws_ecs_cluster.main.name
+    ECS_SERVICE                = aws_ecs_service.app.name
+    ECS_TASK_FAMILY            = aws_ecs_task_definition.app.family
+    PUBLIC_SUBNET_IDS          = join(",", aws_subnet.public[*].id)
+    APP_SECURITY_GROUP_ID      = aws_security_group.app.id
+    FRONTEND_BUCKET            = aws_s3_bucket.frontend.bucket
+    CLOUDFRONT_DISTRIBUTION_ID = aws_cloudfront_distribution.main.id
+    CLOUDFRONT_DOMAIN          = aws_cloudfront_distribution.main.domain_name
+  }
+}

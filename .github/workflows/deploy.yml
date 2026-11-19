@@ -1,0 +1,159 @@
+name: Deploy
+
+# 手動で実行する(Actions の画面の「Run workflow」)。main ブランチからだけ。
+# AWS へは GitHub OIDC で接続する(長期のアクセスキーは使わない)。
+# 設定値は、リポジトリの「変数」(vars.*)。作成のたびに scripts/set-github-variables.mjs で更新する。
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: バックエンドをビルドして、新しいイメージに更新する
+        type: boolean
+        default: true
+      migrate:
+        description: マイグレーション(prisma migrate deploy)を、サービスの更新の前に実行する
+        type: boolean
+        default: true
+      frontend:
+        description: フロントをビルドして、S3 へ配置し、CloudFront のキャッシュを無効にする
+        type: boolean
+        default: true
+
+# 同時に 1 つだけ動かす(終わるのを待つ)
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy
+    # OIDC のロールも main だけを信頼するが、ここでも止める
+    if: github.ref == 'refs/heads/main'
+    # 本番の Fargate は ARM64。ARM のランナーでビルドする
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 40
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+      PUBLIC_SUBNET_IDS: ${{ vars.PUBLIC_SUBNET_IDS }}
+      APP_SECURITY_GROUP_ID: ${{ vars.APP_SECURITY_GROUP_ID }}
+      FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      CLOUDFRONT_DOMAIN: ${{ vars.CLOUDFRONT_DOMAIN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # ---- バックエンド -----------------------------------------------------
+      - name: Login to ECR
+        if: inputs.backend
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the backend image (tag = git SHA)
+        if: inputs.backend
+        run: |
+          IMAGE="$ECR_REPOSITORY_URL:${GITHUB_SHA::7}"
+          docker build -t "$IMAGE" backend
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      # 現在のタスク定義のイメージだけを差し替えて、新しいリビジョンを登録する
+      - name: Register a new task definition revision
+        id: taskdef
+        run: |
+          CURRENT=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" --query 'services[0].taskDefinition' --output text)
+          if [ "${{ inputs.backend }}" = "true" ]; then
+            aws ecs describe-task-definition --task-definition "$CURRENT" --query taskDefinition > taskdef.json
+            jq --arg image "$IMAGE" '
+              del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+              | .containerDefinitions[0].image = $image' taskdef.json > taskdef-new.json
+            ARN=$(aws ecs register-task-definition --cli-input-json file://taskdef-new.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          else
+            ARN="$CURRENT"
+          fi
+          echo "arn=$ARN" >> "$GITHUB_OUTPUT"
+          echo "Task definition: $ARN"
+
+      # 同じイメージで、1 回限りのタスクとして実行する。失敗したら、サービスは更新しない
+      - name: Run migrations (one-off task)
+        if: inputs.migrate
+        run: |
+          TASK=$(aws ecs run-task --cluster "$ECS_CLUSTER" --launch-type FARGATE \
+            --task-definition "${{ steps.taskdef.outputs.arn }}" \
+            --network-configuration "awsvpcConfiguration={subnets=[$PUBLIC_SUBNET_IDS],securityGroups=[$APP_SECURITY_GROUP_ID],assignPublicIp=ENABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","migrate","deploy"]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+          if [ -z "$TASK" ] || [ "$TASK" = "None" ]; then
+            echo "::error::Could not start the migration task"
+            exit 1
+          fi
+          echo "Migration task: $TASK"
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK" --query 'tasks[0].containers[0].exitCode' --output text)
+          TASK_ID="${TASK##*/}"
+          aws logs get-log-events --log-group-name "/ecs/$ECS_CLUSTER" --log-stream-name "backend/backend/$TASK_ID" --query 'events[].message' --output text || true
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::Migration failed (exit code: $EXIT_CODE). The service was not updated."
+            exit 1
+          fi
+
+      - name: Update the service
+        if: inputs.backend || inputs.migrate
+        run: |
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.taskdef.outputs.arn }}" --query 'service.deployments[0].rolloutState' --output text
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      # ---- フロント ---------------------------------------------------------
+      - name: Setup Node.js
+        if: inputs.frontend
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the frontend (without mock pages)
+        if: inputs.frontend
+        working-directory: frontend
+        env:
+          HIDE_MOCK: "true"
+        run: |
+          npm ci
+          npm run generate
+
+      - name: Upload the frontend and invalidate CloudFront
+        if: inputs.frontend
+        run: |
+          aws s3 sync frontend/.output/public "s3://$FRONTEND_BUCKET" --delete --only-show-errors
+          INVALIDATION=$(aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths '/*' --query 'Invalidation.Id' --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --id "$INVALIDATION"
+
+      # ---- 疎通の確認 -------------------------------------------------------
+      - name: Smoke test
+        run: |
+          BASE="https://$CLOUDFRONT_DOMAIN"
+          for path in / /api/health/live /api/health; do
+            ok=0
+            for i in $(seq 1 12); do
+              if curl -fsS -o /dev/null "$BASE$path"; then ok=1; break; fi
+              sleep 5
+            done
+            if [ "$ok" != "1" ]; then
+              echo "::error::Smoke test failed: $BASE$path"
+              exit 1
+            fi
+            echo "OK $BASE$path"
+          done
+          echo "Deployed: $BASE" >> "$GITHUB_STEP_SUMMARY"

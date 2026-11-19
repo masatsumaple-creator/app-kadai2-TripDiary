@@ -38,3 +38,15 @@ variable "image_tag" {
   type        = string
   default     = "bootstrap"
 }
+
+variable "github_repository" {
+  description = "デプロイを許可する GitHub のリポジトリ(オーナー/名前)。このリポジトリの main ブランチからの実行だけを信頼する"
+  type        = string
+  default     = "masatsumaple-creator/app-kadai2-TripDiary"
+}
+
+variable "create_github_oidc_provider" {
+  description = "GitHub の OIDC プロバイダーを作るか。1 つの AWS アカウントに作れるのは 1 つだけなので、すでにあるアカウントでは false にする"
+  type        = bool
+  default     = true
+}

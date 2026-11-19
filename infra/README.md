@@ -14,7 +14,7 @@ TripDiary を AWS にデプロイするための Terraform。設計は `docs/22_
 | L2 | `rds.tf`、`secrets.tf` | **RDS が課金開始**(確認済み。確認後は同日 destroy) |
 | L3 | `alb.tf`、`ecs.tf`、`iam.tf` | **ALB・Fargate・公開 IPv4 が課金開始**(確認済み。確認後は同日 destroy) |
 | L4 | `s3_frontend.tf`、`cloudfront.tf` | ほぼ無料(確認済み。確認後は同日 destroy) |
-| L5 | `github_oidc.tf`(+ `.github/workflows/deploy.yml`) | なし |
+| L5 | `github_oidc.tf`(+ `.github/workflows/deploy.yml`、`scripts/set-github-variables.mjs`) | なし |
 
 ## 前提
 
@@ -42,7 +42,24 @@ terraform plan -out=tfplan           # 作られるものを確認する
 terraform apply tfplan
 ```
 
-### 最初のイメージと、マイグレーション(L3 以降)
+### GitHub Actions でデプロイする(L5 以降。通常はこちら)
+
+環境を作る(`terraform apply`)と、ECS のサービスは、まだ ECR にないイメージ(`bootstrap`)を取りに行って失敗し続ける。**次の手順で、デプロイのワークフローが、イメージのビルド・マイグレーション・サービスの更新・フロントの配置までを行う**:
+
+```bash
+# 1. GitHub のリポジトリの「変数」を、作った環境の値に更新する(ロールの ARN、CloudFront のドメインなど。秘密情報ではない)
+node scripts/set-github-variables.mjs
+# 2. ワークフローを実行する(Actions の画面の「Deploy」→ Run workflow、または):
+gh workflow run deploy.yml --ref main
+gh run watch
+```
+
+- 入力は 3 つ(バックエンド・マイグレーション・フロント。既定は、すべて実行)。同時に 1 つだけ動く。
+- ワークフローは、`main` ブランチからだけ動く。AWS のロールの信頼も、このリポジトリの `main` だけ(GitHub OIDC。長期のアクセスキーは使わない)。
+- 最後に、CloudFront の URL で、画面・`/api/health/live`・`/api/health` の疎通を確認する。
+- 1 つの AWS アカウントに作れる GitHub の OIDC プロバイダーは 1 つだけ。すでにあるアカウントでは、`-var create_github_oidc_provider=false` を付ける。
+
+### 手動で、最初のイメージを push する(GitHub Actions を使えないとき)
 
 ECS のサービスは、ECR にイメージがないと起動できない。**apply の前に**、ARM64 のイメージを push する(以降の更新は、デプロイの CI が行う):
 

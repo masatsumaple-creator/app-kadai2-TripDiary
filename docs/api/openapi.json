@@ -1396,6 +1396,246 @@
           "lists"
         ]
       }
+    },
+    "/api/spots/{spotId}/photos": {
+      "post": {
+        "description": "署名付き URL を発行する。応答の uploadUrl へ、画像を PUT し(headers のとおりのヘッダーを付ける)、そのあと「アップロードの完了」を呼ぶ。画像は、このサーバーを通らない。本人の投稿だけ。1 投稿に付けられる写真は、最大 20 枚、1 枚 5MB 以下、JPEG・PNG・WebP。",
+        "operationId": "PhotosController_createUpload",
+        "parameters": [
+          {
+            "name": "spotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhotoUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "権限がない(FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "写真のアップロードを始める",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/api/spots/{spotId}/photos/{photoId}/complete": {
+      "post": {
+        "description": "画像が実際に置かれたこと(大きさ・形式)を確かめて、写真として表示できるようにする。確認できなければ 400(アップロードされていない、または、大きさ・形式が正しくない。後者は、画像も消す)。同じ写真に、もう一度呼んでもよい。",
+        "operationId": "PhotosController_complete",
+        "parameters": [
+          {
+            "name": "spotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "権限がない(FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "写真のアップロードの完了",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/api/spots/{spotId}/photos/{photoId}": {
+      "delete": {
+        "description": "本人の投稿だけ。画像も消す。",
+        "operationId": "PhotosController_remove",
+        "parameters": [
+          {
+            "name": "spotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "削除した"
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "権限がない(FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "写真を削除",
+        "tags": [
+          "photos"
+        ]
+      }
     }
   },
   "info": {
@@ -1669,6 +1909,23 @@
           "name"
         ]
       },
+      "PhotoResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 12
+          },
+          "url": {
+            "type": "string",
+            "description": "表示用の URL(S3 の署名付き URL。3600 秒間だけ有効。期限が切れたら、投稿を取り直す)"
+          }
+        },
+        "required": [
+          "id",
+          "url"
+        ]
+      },
       "SpotResponse": {
         "type": "object",
         "properties": {
@@ -1725,6 +1982,13 @@
             "type": "boolean",
             "description": "閲覧者本人の投稿か"
           },
+          "photos": {
+            "description": "写真(表示順。最大 20 枚)。URL は期限つき",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhotoResponse"
+            }
+          },
           "likeCount": {
             "type": "integer",
             "minimum": 0
@@ -1766,6 +2030,7 @@
           "visibility",
           "author",
           "isMine",
+          "photos",
           "likeCount",
           "commentCount",
           "liked",
@@ -1809,6 +2074,11 @@
             "type": "boolean",
             "description": "閲覧者本人の投稿か"
           },
+          "coverPhotoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "代表の写真(先頭の 1 枚)の URL。写真がなければ null。URL は期限つき"
+          },
           "likeCount": {
             "type": "integer",
             "minimum": 0
@@ -1829,6 +2099,7 @@
           "visibility",
           "author",
           "isMine",
+          "coverPhotoUrl",
           "likeCount",
           "commentCount",
           "createdAt"
@@ -2084,6 +2355,60 @@
           "items",
           "nextCursor",
           "counts"
+        ]
+      },
+      "CreatePhotoUploadDto": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "description": "画像の形式(JPEG・PNG・WebP)",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5242880,
+            "description": "画像の大きさ(バイト)。1 枚 5MB まで",
+            "example": 350000
+          }
+        },
+        "required": [
+          "contentType",
+          "size"
+        ]
+      },
+      "PhotoUploadResponse": {
+        "type": "object",
+        "properties": {
+          "photoId": {
+            "type": "integer",
+            "example": 12
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "アップロード先の URL(S3 の署名付き URL。300 秒間だけ有効)。この URL へ、画像を PUT する"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "PUT のときに付けるヘッダー(署名に含まれているため、この値のとおりに付ける)",
+            "example": {
+              "Content-Type": "image/jpeg"
+            }
+          }
+        },
+        "required": [
+          "photoId",
+          "uploadUrl",
+          "headers"
         ]
       }
     }

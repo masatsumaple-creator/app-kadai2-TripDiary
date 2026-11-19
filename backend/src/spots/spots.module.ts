@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { PhotoStorageModule } from '../photos/photo-storage.module.js';
 import { SpotsController } from './spots.controller.js';
 import { SpotsService } from './spots.service.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, PhotoStorageModule],
   controllers: [SpotsController],
   providers: [SpotsService],
   // いいね・コメントが、閲覧できる投稿かの確認に使う

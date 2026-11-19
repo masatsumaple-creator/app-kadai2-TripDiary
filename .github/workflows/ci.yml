@@ -36,10 +36,23 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
+      # 写真の置き場(S3)の代わり。署名付き URL でのアップロード・取得を、実際の HTTP で確かめる
+      s3:
+        image: adobe/s3mock:latest
+        env:
+          COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: tripdiary-e2e
+          COM_ADOBE_TESTING_S3MOCK_STORE_REGION: ap-northeast-1
+        ports:
+          - 9090:9090
     env:
       # CI 専用のテスト用の値(本物の秘密情報ではない)
       DATABASE_URL: mysql://tripdiary:tripdiary@127.0.0.1:3306/tripdiary
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+      S3_ENDPOINT: http://127.0.0.1:9090
+      S3_BUCKET: tripdiary-e2e
+      S3_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: ci-only
+      AWS_SECRET_ACCESS_KEY: ci-only
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -57,6 +70,8 @@ jobs:
       - run: node dist/openapi/generate-openapi.js --check
       - run: npm test
       - run: npx prisma migrate deploy
+      # S3 互換のサーバーの起動を待つ
+      - run: for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9090/ && break; sleep 2; done
       - run: npm run test:e2e
       # 本番のコンテナイメージが、ビルドでき、DB_* の環境変数だけで起動できることを確認する
       - name: Docker image (build and smoke test)

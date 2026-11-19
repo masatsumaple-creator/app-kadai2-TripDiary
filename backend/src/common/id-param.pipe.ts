@@ -36,3 +36,11 @@ export class CommentIdParamPipe implements PipeTransform<string, number> {
     return parseId(value, 'コメントが見つかりません。');
   }
 }
+
+// 写真の ID 用
+@Injectable()
+export class PhotoIdParamPipe implements PipeTransform<string, number> {
+  transform(value: string): number {
+    return parseId(value, '写真が見つかりません。');
+  }
+}

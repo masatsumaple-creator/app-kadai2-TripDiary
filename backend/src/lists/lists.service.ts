@@ -140,8 +140,10 @@ export class ListsService {
 
     const page = rows.slice(0, limit);
     return {
-      items: page.map((r) =>
-        this.spots.toListItem(r.spot as unknown as SpotRecord, userId),
+      items: await Promise.all(
+        page.map((r) =>
+          this.spots.toListItem(r.spot as unknown as SpotRecord, userId),
+        ),
       ),
       nextCursor: rows.length > limit ? page[page.length - 1]!.id : null,
       counts: { visited, wishlist },

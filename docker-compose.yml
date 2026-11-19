@@ -23,5 +23,16 @@ services:
       timeout: 5s
       retries: 20
 
+  # 写真の置き場(S3)の代わり。開発・テスト用(AWS には接続しない)。署名付き URL・CORS が使える S3 互換のサーバー
+  # バケット: tripdiary-local(開発)、tripdiary-e2e(結合テスト・E2E)。再起動すると、中身は消える
+  s3:
+    image: adobe/s3mock:latest
+    container_name: tripdiary-s3
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: tripdiary-local,tripdiary-e2e
+      COM_ADOBE_TESTING_S3MOCK_STORE_REGION: ap-northeast-1
+    ports:
+      - "9090:9090"
+
 volumes:
   db-data:

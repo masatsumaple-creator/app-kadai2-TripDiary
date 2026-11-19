@@ -70,6 +70,7 @@ model Spot {
   likes      Like[]
   comments   Comment[]
   userSpots  UserSpot[]
+  photos     Photo[]
 
   @@index([userId])
   @@index([visibility, createdAt])
@@ -147,4 +148,26 @@ model UserSpot {
   @@index([userId, status, id])
   @@index([spotId])
   @@map("user_spots")
+}
+
+// 写真。画像の実体は S3 にあり、ここには、置き場所(キー)だけを持つ。
+// アップロードは、署名付き URL で直接行う: URL を発行したとき pending、アップロードを確認できたら ready
+enum PhotoStatus {
+  pending
+  ready
+}
+
+model Photo {
+  id          Int         @id @default(autoincrement())
+  spotId      Int         @map("spot_id")
+  s3Key       String      @unique @map("s3_key") @db.VarChar(255)
+  contentType String      @map("content_type") @db.VarChar(20)
+  status      PhotoStatus @default(pending)
+  // 表示順(小さいほうが先)。先頭が、一覧の代表の写真
+  sortOrder   Int         @map("sort_order")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  spot        Spot        @relation(fields: [spotId], references: [id], onDelete: Cascade)
+
+  @@index([spotId, status, sortOrder])
+  @@map("photos")
 }

@@ -12,7 +12,7 @@ TripDiary を AWS にデプロイするための Terraform。設計は `docs/22_
 |---|---|---|
 | L1 | `bootstrap/`、`versions.tf`、`variables.tf`、`network.tf`、`ecr.tf`、`budgets.tf` | ほぼ無料(IPv4 を付けるまで) |
 | L2 | `rds.tf`、`secrets.tf` | **RDS が課金開始**(確認済み。確認後は同日 destroy) |
-| L3 | `alb.tf`、`ecs.tf`、`iam.tf` | **ALB・Fargate・公開 IPv4 が課金開始** |
+| L3 | `alb.tf`、`ecs.tf`、`iam.tf` | **ALB・Fargate・公開 IPv4 が課金開始**(確認済み。確認後は同日 destroy) |
 | L4 | `s3_frontend.tf`、`cloudfront.tf` | ほぼ無料 |
 | L5 | `github_oidc.tf`(+ `.github/workflows/deploy.yml`) | なし |
 
@@ -40,6 +40,29 @@ terraform init -backend-config=backend.hcl
 terraform fmt -check && terraform validate
 terraform plan -out=tfplan           # 作られるものを確認する
 terraform apply tfplan
+```
+
+### 最初のイメージと、マイグレーション(L3 以降)
+
+ECS のサービスは、ECR にイメージがないと起動できない。**apply の前に**、ARM64 のイメージを push する(以降の更新は、デプロイの CI が行う):
+
+```bash
+ACC=$(aws sts get-caller-identity --query Account --output text)
+REPO=$ACC.dkr.ecr.ap-northeast-1.amazonaws.com
+SHA=$(git rev-parse --short HEAD)
+aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin $REPO
+docker buildx build --platform linux/arm64 --provenance=false -t $REPO/tripdiary-backend:$SHA --push backend
+export TF_VAR_image_tag=$SHA        # plan・apply で、このタグを使う
+```
+
+apply の後、**マイグレーションを 1 回限りのタスクで実行**する(空の DB にテーブルを作る。終了コード 0 を確認する)。サブネットと SG の ID は `terraform output` で分かる:
+
+```bash
+aws ecs run-task --cluster tripdiary --launch-type FARGATE --task-definition tripdiary-backend \
+  --network-configuration "awsvpcConfiguration={subnets=[<公開サブネット>],securityGroups=[<app の SG>],assignPublicIp=ENABLED}" \
+  --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","migrate","deploy"]}]}'
+aws ecs wait tasks-stopped --cluster tripdiary --tasks <タスクの ARN>
+# ログ: aws logs tail /ecs/tripdiary --since 15m  (Git Bash では、先頭に MSYS_NO_PATHCONV=1 を付ける)
 ```
 
 ## 消す

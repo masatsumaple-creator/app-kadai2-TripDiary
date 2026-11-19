@@ -32,3 +32,9 @@ variable "budget_alert_email" {
   type        = string
   sensitive   = true
 }
+
+variable "image_tag" {
+  description = "最初に起動するバックエンドのイメージのタグ(ECR。git の SHA)。以降の更新は、デプロイの CI がタスク定義を差し替える"
+  type        = string
+  default     = "bootstrap"
+}

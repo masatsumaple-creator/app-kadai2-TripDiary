@@ -58,3 +58,15 @@ output "ecs_service_name" {
 output "ecs_task_definition_family" {
   value = aws_ecs_task_definition.app.family
 }
+
+output "cloudfront_domain_name" {
+  value = aws_cloudfront_distribution.main.domain_name
+}
+
+output "cloudfront_distribution_id" {
+  value = aws_cloudfront_distribution.main.id
+}
+
+output "frontend_bucket" {
+  value = aws_s3_bucket.frontend.bucket
+}

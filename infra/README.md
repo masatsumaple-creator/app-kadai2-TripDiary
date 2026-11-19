@@ -13,7 +13,7 @@ TripDiary を AWS にデプロイするための Terraform。設計は `docs/22_
 | L1 | `bootstrap/`、`versions.tf`、`variables.tf`、`network.tf`、`ecr.tf`、`budgets.tf` | ほぼ無料(IPv4 を付けるまで) |
 | L2 | `rds.tf`、`secrets.tf` | **RDS が課金開始**(確認済み。確認後は同日 destroy) |
 | L3 | `alb.tf`、`ecs.tf`、`iam.tf` | **ALB・Fargate・公開 IPv4 が課金開始**(確認済み。確認後は同日 destroy) |
-| L4 | `s3_frontend.tf`、`cloudfront.tf` | ほぼ無料 |
+| L4 | `s3_frontend.tf`、`cloudfront.tf` | ほぼ無料(確認済み。確認後は同日 destroy) |
 | L5 | `github_oidc.tf`(+ `.github/workflows/deploy.yml`) | なし |
 
 ## 前提
@@ -63,6 +63,17 @@ aws ecs run-task --cluster tripdiary --launch-type FARGATE --task-definition tri
   --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","migrate","deploy"]}]}'
 aws ecs wait tasks-stopped --cluster tripdiary --tasks <タスクの ARN>
 # ログ: aws logs tail /ecs/tripdiary --since 15m  (Git Bash では、先頭に MSYS_NO_PATHCONV=1 を付ける)
+```
+
+### フロントの配置(L4 以降)
+
+本番用にビルド(**`HIDE_MOCK=true`** で、ダミーの画面 `/mock`・`/map` を外す)し、S3 に置く。CloudFront の URL は `terraform output cloudfront_domain_name`:
+
+```bash
+(cd frontend && HIDE_MOCK=true npm run generate)
+aws s3 sync frontend/.output/public s3://$(terraform -chdir=infra output -raw frontend_bucket) --delete
+# 作り直しのあとは不要。内容を更新したときは、キャッシュを無効にする:
+aws cloudfront create-invalidation --distribution-id $(terraform -chdir=infra output -raw cloudfront_distribution_id) --paths "/*"
 ```
 
 ## 消す

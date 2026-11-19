@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error.js';
 import { UserSummary } from '../common/api-doc.js';
+import { PhotoStorage } from '../photos/photo-storage.service.js';
+import { PhotoResponse } from '../photos/photo.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { retryOnWriteConflict } from '../prisma/retry.js';
 import { viewableSpotsWhere } from './spot-visibility.js';
@@ -17,6 +19,12 @@ export const spotInclude = {
   tags: { include: { tag: true } },
   user: { select: { id: true, name: true } },
   _count: { select: { likes: true, comments: true } },
+  // 表示できる写真(アップロードの完了を確認できたもの)だけ。先頭が、一覧の代表の写真
+  photos: {
+    where: { status: 'ready' },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, s3Key: true },
+  },
 } as const;
 
 export interface SpotRecord {
@@ -33,6 +41,7 @@ export interface SpotRecord {
   tags: { tagId: number; tag: { name: string } }[];
   user: { id: number; name: string };
   _count: { likes: number; comments: number };
+  photos: { id: number; s3Key: string }[];
 }
 
 export class SpotResponse {
@@ -73,6 +82,12 @@ export class SpotResponse {
 
   @ApiProperty({ type: 'boolean', description: '閲覧者本人の投稿か' })
   isMine: boolean;
+
+  @ApiProperty({
+    type: () => [PhotoResponse],
+    description: '写真(表示順。最大 20 枚)。URL は期限つき',
+  })
+  photos: PhotoResponse[];
 
   @ApiProperty({ type: 'integer', minimum: 0 })
   likeCount: number;
@@ -122,6 +137,14 @@ export class SpotListItem {
   @ApiProperty({ type: 'boolean', description: '閲覧者本人の投稿か' })
   isMine: boolean;
 
+  @ApiProperty({
+    type: 'string',
+    nullable: true,
+    description:
+      '代表の写真(先頭の 1 枚)の URL。写真がなければ null。URL は期限つき',
+  })
+  coverPhotoUrl: string | null;
+
   @ApiProperty({ type: 'integer', minimum: 0 })
   likeCount: number;
 
@@ -150,7 +173,10 @@ const notFound = () => new ApiError(404, 'NOT_FOUND', '投稿が見つかりま�
 
 @Injectable()
 export class SpotsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: PhotoStorage,
+  ) {}
 
   async create(userId: number, dto: SpotInputDto): Promise<SpotResponse> {
     const tagIds = await this.resolveTagIds(dto.areas);
@@ -167,7 +193,7 @@ export class SpotsService {
       }),
     );
     // 作ったばかりなので、いいねもコメントもない。自分の投稿なので、リストは「訪問済み」
-    return this.toResponse(spot, userId, false, 'visited');
+    return await this.toResponse(spot, userId, false, 'visited');
   }
 
   // 新着順(ID の降順)の一覧。詳細と同じ公開範囲の規則で、閲覧できる投稿だけを返す。
@@ -205,7 +231,7 @@ export class SpotsService {
 
     const page = rows.slice(0, limit);
     return {
-      items: page.map((s) => this.toListItem(s, viewerId)),
+      items: await Promise.all(page.map((s) => this.toListItem(s, viewerId))),
       nextCursor: rows.length > limit ? page[page.length - 1]!.id : null,
     };
   }
@@ -216,7 +242,7 @@ export class SpotsService {
       this.isLiked(id, viewerId),
       this.listStatusOf(id, viewerId),
     ]);
-    return this.toResponse(spot, viewerId, liked, listStatus);
+    return await this.toResponse(spot, viewerId, liked, listStatus);
   }
 
   // いいね・コメントなど、投稿に付く操作の前に、閲覧できる投稿かを確かめる。
@@ -251,14 +277,20 @@ export class SpotsService {
       this.isLiked(id, userId),
       this.listStatusOf(id, userId),
     ]);
-    return this.toResponse(spot, userId, liked, listStatus);
+    return await this.toResponse(spot, userId, liked, listStatus);
   }
 
   async remove(id: number, userId: number): Promise<void> {
     await this.findOwned(id, userId);
+    // 写真の行は、投稿と一緒に消える(DB の連動)。画像(S3)は、その後に消す
+    const photos = await this.prisma.photo.findMany({
+      where: { spotId: id },
+      select: { s3Key: true },
+    });
     await retryOnWriteConflict(() =>
       this.prisma.spot.delete({ where: { id } }),
     );
+    await this.storage.remove(photos.map((p) => p.s3Key));
   }
 
   // 閲覧できない投稿は、存在しない場合と同じ 404 にする(存在を知らせない)
@@ -326,7 +358,8 @@ export class SpotsService {
     }
   }
 
-  toListItem(spot: SpotRecord, viewerId?: number): SpotListItem {
+  async toListItem(spot: SpotRecord, viewerId?: number): Promise<SpotListItem> {
+    const cover = spot.photos[0];
     return {
       id: spot.id,
       name: spot.name,
@@ -336,6 +369,9 @@ export class SpotsService {
       visibility: spot.visibility,
       author: spot.user,
       isMine: viewerId !== undefined && spot.userId === viewerId,
+      coverPhotoUrl: cover
+        ? await this.storage.presignViewOrNull(cover.s3Key)
+        : null,
       likeCount: spot._count.likes,
       commentCount: spot._count.comments,
       createdAt: spot.createdAt,
@@ -394,12 +430,21 @@ export class SpotsService {
     };
   }
 
-  private toResponse(
+  private async toResponse(
     spot: SpotRecord,
     viewerId: number | undefined,
     liked: boolean,
     listStatus: ListStatusValue | null,
-  ): SpotResponse {
+  ): Promise<SpotResponse> {
+    // URL を作れなかった写真は、出さない(投稿は返す)
+    const photos = (
+      await Promise.all(
+        spot.photos.map(async (p) => ({
+          id: p.id,
+          url: await this.storage.presignViewOrNull(p.s3Key),
+        })),
+      )
+    ).filter((p): p is PhotoResponse => p.url !== null);
     return {
       id: spot.id,
       name: spot.name,
@@ -413,6 +458,7 @@ export class SpotsService {
       visibility: spot.visibility,
       author: spot.user,
       isMine: viewerId !== undefined && spot.userId === viewerId,
+      photos,
       likeCount: spot._count.likes,
       commentCount: spot._count.comments,
       liked,

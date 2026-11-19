@@ -18,6 +18,7 @@ npm run start:dev              # http://localhost:3000(API は /api、仕様書�
 | `DATABASE_URL` | MySQL への接続先(例: `mysql://tripdiary:tripdiary@localhost:3306/tripdiary`) |
 | `DB_HOST` `DB_PORT` `DB_NAME` `DB_USER` `DB_PASSWORD` | `DATABASE_URL` の代わりに、部品で渡す(AWS の ECS 用。`DATABASE_URL` があればそちらが優先。パスワードは自動で URL エンコードする)。`DB_PORT` の既定は 3306 |
 | `JWT_SECRET` | アクセストークンの署名鍵(長いランダム文字列) |
+| `S3_BUCKET` `S3_REGION` `S3_ENDPOINT` | 写真の置き場。`S3_BUCKET` は必須(なければ、写真のアップロードだけが 503 になる)。`S3_ENDPOINT` は、ローカルの S3 互換サーバー用(`docker compose up -d s3`。AWS では付けない)。認証は、AWS の標準(ECS ではタスクロール。ローカルは `AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`) |
 | `SWAGGER_ENABLED` | Swagger UI(`/api/docs`)を公開するか。`true` / `false`。未設定のときは、本番(`NODE_ENV=production`)以外で公開 |
 | `PORT` | 待ち受けポート(既定 3000) |
 | `NODE_ENV` | `production` のとき、リフレッシュトークンの Cookie に `Secure` を付ける |
@@ -50,6 +51,7 @@ Node 24、非 root、本番の依存と Prisma CLI だけを含む。起動は `
 | `spots/` | スポットの CRUD・一覧・公開範囲(`viewableSpotsWhere`)・近くのスポット |
 | `users/` `follows/` | プロフィール、フォロー |
 | `likes/` `comments/` `lists/` | いいね、コメント、マイリスト |
+| `photos/` | 写真: 署名付き URL の発行 → ブラウザが S3 へ直接アップロード → 完了の確認(実際の大きさ・形式で判断)。S3 とのやり取りは `photo-storage.service.ts` |
 | `prisma/` | DB 接続、書き込みの競合(デッドロック)時の再試行(`retry.ts`) |
 | `openapi/` | OpenAPI の生成と Swagger UI |
 | `common/` | 共通の部品 |

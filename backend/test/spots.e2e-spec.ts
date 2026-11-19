@@ -450,6 +450,7 @@ describe('Spots (e2e)', () => {
         // 一覧のカードに出すいいね数・コメント数(新しい投稿なので 0)
         likeCount: 0,
         commentCount: 0,
+        coverPhotoUrl: null,
         createdAt: expect.any(String),
       });
     });

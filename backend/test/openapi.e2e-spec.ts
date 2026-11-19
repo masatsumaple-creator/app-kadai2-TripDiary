@@ -84,6 +84,9 @@ describe('OpenAPI (e2e)', () => {
         'PUT /api/spots/{id}/list',
         'DELETE /api/spots/{id}/list',
         'GET /api/me/list',
+        'POST /api/spots/{spotId}/photos',
+        'POST /api/spots/{spotId}/photos/{photoId}/complete',
+        'DELETE /api/spots/{spotId}/photos/{photoId}',
       ].sort(),
     );
   });
@@ -115,6 +118,9 @@ describe('OpenAPI (e2e)', () => {
       ['put', '/api/spots/{id}/list'],
       ['delete', '/api/spots/{id}/list'],
       ['get', '/api/me/list'],
+      ['post', '/api/spots/{spotId}/photos'],
+      ['post', '/api/spots/{spotId}/photos/{photoId}/complete'],
+      ['delete', '/api/spots/{spotId}/photos/{photoId}'],
     ] as const) {
       expect(security(m, p), `${m} ${p}`).toEqual([{ bearer: [] }]);
     }

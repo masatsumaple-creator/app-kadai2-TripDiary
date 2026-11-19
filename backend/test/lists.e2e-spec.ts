@@ -367,6 +367,7 @@ describe('Lists (e2e)', () => {
         isMine: false,
         likeCount: 0,
         commentCount: 0,
+        coverPhotoUrl: null,
         createdAt: expect.any(String),
       });
     });

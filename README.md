@@ -53,8 +53,8 @@ cp .env.example backend/.env    # バックエンド用(DATABASE_URL と JWT_SEC
 # backend/.env の JWT_SECRET を、長いランダム文字列に変える
 #   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
-# 2. DB を起動する(初回は、E2E 用 DB と Prisma の shadow DB の権限も作られる)
-docker compose up -d db
+# 2. DB と、写真の置き場(S3 互換のサーバー)を起動する(初回は、E2E 用 DB と Prisma の shadow DB の権限も作られる)
+docker compose up -d db s3
 
 # 3. バックエンド(http://localhost:3000、API 仕様書 http://localhost:3000/api/docs)
 cd backend
@@ -78,7 +78,7 @@ npm run dev
 | 種類 | コマンド | 内容 |
 |---|---|---|
 | バックエンド単体 | `cd backend && npm test` | 純粋なロジック |
-| バックエンド結合(API + DB) | `cd backend && npm run test:e2e` | 実際の MySQL に対して、API の挙動(権限・公開範囲・競合)を確認 |
+| バックエンド結合(API + DB + S3) | `cd backend && npm run test:e2e` | 実際の MySQL と S3 互換のサーバーに対して、API の挙動(権限・公開範囲・競合・写真のアップロード)を確認 |
 | フロント単体 | `cd frontend && npm test` | 画面・部品・ストアのテスト(Vitest + Vue Test Utils) |
 | E2E | `cd e2e && npm install && npx playwright install chromium && npm test` | ブラウザで主要な流れ、セキュリティ、アクセシビリティ(axe)、スマホ幅 |
 

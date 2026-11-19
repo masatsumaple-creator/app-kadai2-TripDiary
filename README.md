@@ -103,6 +103,7 @@ npm run dev
 | 技術方針・認証・テストの方針 | [docs/20_設計書.md](docs/20_設計書.md) |
 | 画面と遷移 | [docs/21_画面設計.md](docs/21_画面設計.md) |
 | AWS の構成・費用・運用の流れ | [docs/22_インフラ設計.md](docs/22_インフラ設計.md)、[infra/README.md](infra/README.md) |
+| 環境の作り方・確認・消し方 | [docs/23_運用手順書.md](docs/23_運用手順書.md) |
 
 ## 開発の進め方
 

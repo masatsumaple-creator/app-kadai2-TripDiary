@@ -14,6 +14,12 @@
 
 画面と URL は [docs/21_画面設計.md](docs/21_画面設計.md) にあります。
 
+| 新着一覧 | スポット詳細(いいね・コメント・マイリスト) | マイリスト(スマホ幅) |
+|---|---|---|
+| ![新着一覧](docs/images/home.png) | ![スポット詳細](docs/images/spot-detail.png) | ![マイリスト](docs/images/mylist-mobile.png) |
+
+(AWS に構築した環境での、動作確認の画面です。)
+
 ## 構成
 
 ```

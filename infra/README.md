@@ -57,6 +57,7 @@ gh run watch
 - 入力は 3 つ(バックエンド・マイグレーション・フロント。既定は、すべて実行)。同時に 1 つだけ動く。
 - ワークフローは、`main` ブランチからだけ動く。AWS のロールの信頼も、このリポジトリの `main` だけ(GitHub OIDC。長期のアクセスキーは使わない)。
 - 最後に、CloudFront の URL で、画面・`/api/health/live`・`/api/health` の疎通を確認する。
+- **OIDC のトークンの `sub`**: このリポジトリは、GitHub の「不変のサブジェクト」(オーナーとリポジトリの ID を使う形式。リポジトリ名を変えられても、同じ名前を取られても、信頼が移らない)が有効なため、`sub` が `repo:<オーナー>@<ID>/<リポジトリ>@<ID>:ref:refs/heads/main` の形になる。変数 `github_oidc_subject_prefix` の既定値に、その接頭辞を入れてある(確認: `gh api repos/<オーナー>/<リポジトリ>/actions/oidc/customization/sub` の `sub_claim_prefix`。ID は公開情報)。**別のリポジトリで使うときは、この値を変える**(名前の形式なら、空にする)。ロールを引き受けられないときは、まずここを疑う。
 - 1 つの AWS アカウントに作れる GitHub の OIDC プロバイダーは 1 つだけ。すでにあるアカウントでは、`-var create_github_oidc_provider=false` を付ける。
 
 ### 手動で、最初のイメージを push する(GitHub Actions を使えないとき)

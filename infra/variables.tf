@@ -45,6 +45,12 @@ variable "github_repository" {
   default     = "masatsumaple-creator/app-kadai2-TripDiary"
 }
 
+variable "github_oidc_subject_prefix" {
+  description = "GitHub の OIDC トークンの sub の接頭辞。リポジトリが「不変のサブジェクト」(オーナーとリポジトリの ID を使う形式)を使う場合は、その値を指定する。確認: gh api repos/<オーナー>/<リポジトリ>/actions/oidc/customization/sub の sub_claim_prefix(ID は公開情報で、秘密情報ではない)。空のときは repo:<github_repository>(名前の形式)"
+  type        = string
+  default     = "repo:masatsumaple-creator@325277161/app-kadai2-TripDiary@1457659476"
+}
+
 variable "create_github_oidc_provider" {
   description = "GitHub の OIDC プロバイダーを作るか。1 つの AWS アカウントに作れるのは 1 つだけなので、すでにあるアカウントでは false にする"
   type        = bool

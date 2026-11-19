@@ -7,20 +7,19 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const infra = fileURLToPath(new URL('../infra', import.meta.url));
-const shell = process.platform === 'win32';
+// Windows でも、シェルを経由せずに実行する(引数をそのまま渡すため)
+const exe = (name) => (process.platform === 'win32' ? `${name}.exe` : name);
 
 const variables = JSON.parse(
-  execFileSync('terraform', ['output', '-json', 'github_actions_variables'], {
+  execFileSync(exe('terraform'), ['output', '-json', 'github_actions_variables'], {
     cwd: infra,
     encoding: 'utf8',
-    shell,
   }),
 );
 
 for (const [name, value] of Object.entries(variables)) {
-  execFileSync('gh', ['variable', 'set', name, '--body', String(value)], {
+  execFileSync(exe('gh'), ['variable', 'set', name, '--body', String(value)], {
     stdio: ['ignore', 'ignore', 'inherit'],
-    shell,
   });
   console.log(`set ${name}`);
 }

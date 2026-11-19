@@ -19,6 +19,10 @@ RUN npm run build
 FROM node:24-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
+# Prisma CLI が、OpenSSL を検出できない警告を出さないように入れる(slim のイメージには入っていない)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openssl \
+ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 # 本番の依存だけを入れる。マイグレーション(prisma migrate deploy)のために、Prisma CLI も入れる(版は lock と同じ)
 RUN npm ci --omit=dev \

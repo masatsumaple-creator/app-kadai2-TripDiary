@@ -3,10 +3,12 @@ import { useAuthStore } from '~/stores/auth'
 
 const route = useRoute()
 const auth = useAuthStore()
+const { hideMock } = useRuntimeConfig().public
 const nav = [
   { to: '/', label: '新着', icon: '🏠' },
   { to: '/following', label: 'フォロー中', icon: '👥' },
-  { to: '/map', label: '地図', icon: '🗺️' },
+  // 地図はダミーのため、本番(HIDE_MOCK=true)では出さない
+  ...(hideMock ? [] : [{ to: '/map', label: '地図', icon: '🗺️' }]),
 ]
 // スマホの下部タブにのみ出す項目(PC ではヘッダーに表示)
 const mobileOnly = computed(() => [

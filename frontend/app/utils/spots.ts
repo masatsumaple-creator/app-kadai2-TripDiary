@@ -42,6 +42,22 @@ export interface Spot extends Omit<SpotListItem, 'coverPhotoUrl'> {
   updatedAt: string
 }
 
+// 地図のピン 1 つ分(GET /api/spots/map)
+export interface MapSpotItem {
+  id: number
+  name: string
+  latitude: number
+  longitude: number
+  areas: string[]
+  visibility: Visibility
+}
+
+export interface MapSpotsResponse {
+  items: MapSpotItem[]
+  // 範囲内に 100 件を超える投稿があり、一部を省いた
+  truncated: boolean
+}
+
 export interface LikeState {
   liked: boolean
   likeCount: number
@@ -136,10 +152,7 @@ export interface CardSpot {
   authorName: string
   // 代表の写真の URL(なければ、色のグラデーション)
   coverPhotoUrl?: string | null
-  // 本実装ではまだ持っていない項目(モック画面でのみ使う)
   likes?: number
-  photoCount?: number
-  hue?: number
 }
 
 export function toCardSpot(item: SpotListItem): CardSpot {
@@ -172,10 +185,3 @@ export function mergeNearby(
   return [...byId.values()].sort((a, b) => b.id - a.id).slice(0, limit)
 }
 
-// 地図に置く点。モックのスポットも本実装のスポットも、この形に当てはまる
-export interface MapPoint {
-  id: number
-  name: string
-  lat: number
-  lng: number
-}

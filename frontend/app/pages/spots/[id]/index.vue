@@ -195,7 +195,7 @@ watch(id, load, { immediate: true })
       </p>
       <SpotMap
         v-if="spot.latitude !== null && spot.longitude !== null"
-        :spots="[
+        :markers="[
           {
             id: spot.id,
             name: spot.name,
@@ -203,7 +203,10 @@ watch(id, load, { immediate: true })
             lng: spot.longitude,
           },
         ]"
+        :interactive="false"
+        label="スポットの位置"
         class="h-48"
+        data-testid="spot-map"
       />
 
       <p

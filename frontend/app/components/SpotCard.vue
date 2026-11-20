@@ -3,10 +3,10 @@ import { computed } from 'vue'
 import { visibilityLabels } from '~/utils/spotMeta'
 import { hueOf, type CardSpot } from '~/utils/spots'
 
-// mock: モック画面のカード。ダミーデータの詳細(/mock/spots/:id)へ移動する
-const props = defineProps<{ spot: CardSpot; mock?: boolean }>()
-const to = computed(() => `${props.mock ? '/mock' : ''}/spots/${props.spot.id}`)
-const hue = computed(() => props.spot.hue ?? hueOf(props.spot.id))
+const props = defineProps<{ spot: CardSpot }>()
+const to = computed(() => `/spots/${props.spot.id}`)
+// 写真のない投稿のカードの色。ID から決めて、毎回同じ色にする
+const hue = computed(() => hueOf(props.spot.id))
 </script>
 
 <template>
@@ -26,15 +26,11 @@ const hue = computed(() => props.spot.hue ?? hueOf(props.spot.id))
     >
     <div
       v-else
-      class="flex h-40 items-center justify-center text-sm text-white/80"
+      class="h-40"
       :style="{
         background: `linear-gradient(135deg, hsl(${hue} 60% 55%), hsl(${hue + 40} 60% 35%))`,
       }"
-    >
-      <template v-if="spot.photoCount !== undefined"
-        >写真 {{ spot.photoCount }} 枚</template
-      >
-    </div>
+    />
     <div class="space-y-1 p-3">
       <h3 class="font-semibold">{{ spot.name }}</h3>
       <p class="flex flex-wrap gap-1 text-xs">

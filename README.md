@@ -33,7 +33,7 @@ Nuxt 4(SPA)+ NestJS 12 + MySQL を、**AWS(ECS Fargate・RDS・S3・CloudFront�
 
 期間を限って、AWS に公開します。期間が終わったら、`terraform destroy` で、環境をすべて削除します(使い捨ての運用。理由と費用は [docs/22_インフラ設計.md](docs/22_インフラ設計.md))。
 
-- **URL**: (環境を作成したあと、ここに記載します)
+- **URL**: https://d2uyfzv4vin4np.cloudfront.net
 - **公開期間**: 〜 2026-11-24
 - **デモ用のアカウント**(ログインして、投稿・いいね・コメント・フォローなどを試せます。パスワードは共通):
 

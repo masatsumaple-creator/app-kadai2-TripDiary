@@ -24,6 +24,7 @@ import type { AuthenticatedRequest } from '../auth/jwt-auth.guard.js';
 import { ApiErrors, ApiOptionalBearerAuth } from '../common/api-doc.js';
 import { IdParamPipe } from '../common/id-param.pipe.js';
 import { ListSpotsQueryDto } from './dto/list-spots.dto.js';
+import { MapSpotsQueryDto, MapSpotsResponse } from './dto/map-spots.dto.js';
 import { SpotInputDto } from './dto/spot.dto.js';
 import {
   SpotsService,
@@ -69,6 +70,24 @@ export class SpotsController {
     @Query() query: ListSpotsQueryDto,
   ): Promise<SpotListResponse> {
     return this.spots.list(query, req.user?.id);
+  }
+
+  // 地図の表示範囲の中の投稿。:id より前に置く(map を ID として扱わないため)
+  @Get('map')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOptionalBearerAuth()
+  @ApiOperation({
+    summary: '地図の表示範囲の中の投稿',
+    description:
+      '範囲(南西の角 swLat・swLng、北東の角 neLat・neLng)の中にある、閲覧できる投稿(位置のあるものだけ)を、新着順で、最大 100 件返す(超える分は省き、truncated が true になる)。ログインは任意で、一覧・詳細と同じ公開範囲の規則。経度は、日付変更線をまたぐ範囲(南西の経度 > 北東の経度)も指定できる。',
+  })
+  @ApiOkResponse({ type: MapSpotsResponse })
+  @ApiErrors(400, 401)
+  listInBounds(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: MapSpotsQueryDto,
+  ): Promise<MapSpotsResponse> {
+    return this.spots.listInBounds(query, req.user?.id);
   }
 
   // 公開投稿は未ログインでも見られる。公開範囲に合わない場合は 404

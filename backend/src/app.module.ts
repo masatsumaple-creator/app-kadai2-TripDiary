@@ -4,6 +4,7 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommentsModule } from './comments/comments.module.js';
 import { FollowsModule } from './follows/follows.module.js';
+import { GeocodeModule } from './geocode/geocode.module.js';
 import { LikesModule } from './likes/likes.module.js';
 import { ListsModule } from './lists/lists.module.js';
 import { PhotosModule } from './photos/photos.module.js';
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module.js';
     CommentsModule,
     ListsModule,
     PhotosModule,
+    GeocodeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

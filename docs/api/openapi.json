@@ -434,6 +434,110 @@
         ]
       }
     },
+    "/api/spots/map": {
+      "get": {
+        "description": "範囲(南西の角 swLat・swLng、北東の角 neLat・neLng)の中にある、閲覧できる投稿(位置のあるものだけ)を、新着順で、最大 100 件返す(超える分は省き、truncated が true になる)。ログインは任意で、一覧・詳細と同じ公開範囲の規則。経度は、日付変更線をまたぐ範囲(南西の経度 > 北東の経度)も指定できる。",
+        "operationId": "SpotsController_listInBounds",
+        "parameters": [
+          {
+            "name": "swLat",
+            "required": true,
+            "in": "query",
+            "description": "範囲の南西の角の緯度",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "swLng",
+            "required": true,
+            "in": "query",
+            "description": "範囲の南西の角の経度",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          },
+          {
+            "name": "neLat",
+            "required": true,
+            "in": "query",
+            "description": "範囲の北東の角の緯度",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            }
+          },
+          {
+            "name": "neLng",
+            "required": true,
+            "in": "query",
+            "description": "範囲の北東の角の経度",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            }
+          },
+          {
+            "name": "area",
+            "required": false,
+            "in": "query",
+            "description": "エリアタグ(都道府県名)で絞り込む。マスタにない名前は 400",
+            "schema": {
+              "example": "京都府",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapSpotsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {}
+        ],
+        "summary": "地図の表示範囲の中の投稿",
+        "tags": [
+          "spots"
+        ]
+      }
+    },
     "/api/spots/{id}": {
       "get": {
         "description": "ログインは任意。閲覧できない投稿は、存在しない投稿と同じ 404 を返す(存在を知らせない)。",
@@ -1636,6 +1740,89 @@
           "photos"
         ]
       }
+    },
+    "/api/geocode/reverse": {
+      "get": {
+        "description": "投稿フォームの「現在地から入力」で、緯度・経度から住所を自動入力するために使う。ログイン必須(外部のサービスを呼ぶため、未ログインには使わせない)。住所が見つからなければ address は null。外部のサービスに接続できないときは 502(画面では、住所の手入力に切り替える)。",
+        "operationId": "GeocodeController_reverse",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "description": "緯度",
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "example": 34.9949,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "description": "経度",
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "example": 135.785,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReverseGeocodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力が正しくない(VALIDATION_ERROR など)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "エラー",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "位置から住所を調べる(逆ジオコーディング)",
+        "tags": [
+          "geocode"
+        ]
+      }
     }
   },
   "info": {
@@ -2126,6 +2313,72 @@
           "nextCursor"
         ]
       },
+      "MapSpotItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "清水寺"
+          },
+          "latitude": {
+            "type": "number",
+            "example": 34.9949
+          },
+          "longitude": {
+            "type": "number",
+            "example": 135.785
+          },
+          "areas": {
+            "example": [
+              "京都府"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "followers",
+              "private"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "latitude",
+          "longitude",
+          "areas",
+          "visibility"
+        ]
+      },
+      "MapSpotsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "範囲内の、閲覧できる投稿(位置のあるものだけ)。新着順で、最大 100 件",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MapSpotItem"
+            }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "範囲内に、100 件を超える投稿があり、一部を省いたか(true なら、地図を拡大して、絞り込む)"
+          }
+        },
+        "required": [
+          "items",
+          "truncated"
+        ]
+      },
       "UserProfile": {
         "type": "object",
         "properties": {
@@ -2409,6 +2662,20 @@
           "photoId",
           "uploadUrl",
           "headers"
+        ]
+      },
+      "ReverseGeocodeResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "description": "住所(日本語。郵便番号・施設名は含まない)。その位置に住所が見つからなければ null",
+            "example": "京都府京都市東山区清水1丁目294"
+          }
+        },
+        "required": [
+          "address"
         ]
       }
     }

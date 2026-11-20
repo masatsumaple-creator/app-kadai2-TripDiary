@@ -87,6 +87,8 @@ describe('OpenAPI (e2e)', () => {
         'POST /api/spots/{spotId}/photos',
         'POST /api/spots/{spotId}/photos/{photoId}/complete',
         'DELETE /api/spots/{spotId}/photos/{photoId}',
+        'GET /api/spots/map',
+        'GET /api/geocode/reverse',
       ].sort(),
     );
   });
@@ -121,6 +123,7 @@ describe('OpenAPI (e2e)', () => {
       ['post', '/api/spots/{spotId}/photos'],
       ['post', '/api/spots/{spotId}/photos/{photoId}/complete'],
       ['delete', '/api/spots/{spotId}/photos/{photoId}'],
+      ['get', '/api/geocode/reverse'],
     ] as const) {
       expect(security(m, p), `${m} ${p}`).toEqual([{ bearer: [] }]);
     }
@@ -128,6 +131,7 @@ describe('OpenAPI (e2e)', () => {
     for (const [m, p] of [
       ['get', '/api/spots'],
       ['get', '/api/spots/{id}'],
+      ['get', '/api/spots/map'],
       ['get', '/api/users/{id}'],
       ['get', '/api/spots/{spotId}/comments'],
     ] as const) {

@@ -2,7 +2,7 @@
 
 TripDiary を AWS にデプロイするための Terraform。設計は `docs/22_インフラ設計.md`。
 
-- **使い捨て運用**: 使うときだけ作って、終わったら `terraform destroy` で消す(講師の確認期間は 1 週間。詳しくは設計書の 10 章)。
+- **使い捨て運用**: 使うときだけ作って、終わったら `terraform destroy` で消す(確認期間は 1 週間。詳しくは設計書の 10 章)。
 - **このディレクトリのコードが触るのは、`Project=tripdiary` のタグが付いたリソースだけ。** 同じアカウントの RaiseTimeLine のリソース(`raisetimeline-*`)には触らない。
 - **認証情報・state・個人情報(メールアドレス・アカウント ID)は、コミットしない**(`.gitignore` で除外している)。リポジトリは公開されている。
 
@@ -15,6 +15,8 @@ TripDiary を AWS にデプロイするための Terraform。設計は `docs/22_
 | L3 | `alb.tf`、`ecs.tf`、`iam.tf` | **ALB・Fargate・公開 IPv4 が課金開始**(確認済み。確認後は同日 destroy) |
 | L4 | `s3_frontend.tf`、`cloudfront.tf` | ほぼ無料(確認済み。確認後は同日 destroy) |
 | L5 | `github_oidc.tf`(+ `.github/workflows/deploy.yml`、`scripts/set-github-variables.mjs`) | なし |
+| L6 | `s3_photos.tf`(写真)、`location.tf`(地図: Cognito の ID プール・ロール、住所の取得の権限) | ほぼ無料(利用に応じて、少額) |
+| 強化 | `rds.tf`(TLS を必須に)、`ecs.tf`(`DB_SSL_CA_FILE`・`TRUST_PROXY`)、`cloudfront.tf`(CSP の本適用。変数 `csp_enforce`) | なし |
 
 ## 前提
 

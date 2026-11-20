@@ -96,7 +96,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
 
     items {
       header   = "Content-Security-Policy-Report-Only"
-      value    = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://${aws_s3_bucket.photos.bucket_regional_domain_name}; connect-src 'self' https://${aws_s3_bucket.photos.bucket_regional_domain_name}; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      value    = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://${aws_s3_bucket.photos.bucket_regional_domain_name}; connect-src 'self' https://${aws_s3_bucket.photos.bucket_regional_domain_name} https://maps.geo.${var.region}.amazonaws.com https://cognito-identity.${var.region}.amazonaws.com; worker-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
       override = true
     }
   }

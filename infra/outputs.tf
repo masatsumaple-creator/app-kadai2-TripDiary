@@ -85,6 +85,7 @@ output "github_actions_variables" {
     FRONTEND_BUCKET            = aws_s3_bucket.frontend.bucket
     CLOUDFRONT_DISTRIBUTION_ID = aws_cloudfront_distribution.main.id
     CLOUDFRONT_DOMAIN          = aws_cloudfront_distribution.main.domain_name
+    MAP_IDENTITY_POOL_ID       = aws_cognito_identity_pool.map.id
   }
 }
 

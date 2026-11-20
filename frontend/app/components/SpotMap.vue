@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import {
   DEFAULT_VIEW,
+  labelLanguageUpdates,
   OFFLINE_STYLE,
   resolveMapConfig,
   toBounds,
@@ -153,6 +154,10 @@ onMounted(async () => {
     })
     map.on('load', () => {
       ready.value = true
+      // 地名を、日本語優先にする(標準のスタイルは、英語名を優先するため)
+      for (const { id, expression } of labelLanguageUpdates(map!.getStyle().layers as never)) {
+        map!.setLayoutProperty(id, 'text-field', expression as never)
+      }
       syncMarkers()
       emitBounds()
     })

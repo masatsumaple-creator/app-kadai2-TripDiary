@@ -3,6 +3,7 @@ import {
   boundsToQuery,
   DEFAULT_VIEW,
   formatLatLng,
+  labelLanguageUpdates,
   MAX_ZOOM,
   MIN_ZOOM,
   OFFLINE_STYLE,
@@ -118,5 +119,58 @@ describe('OFFLINE_STYLE', () => {
   it('タイルを取りに行かない(ソースがなく、背景だけ)', () => {
     expect(OFFLINE_STYLE.sources).toEqual({})
     expect(OFFLINE_STYLE.layers.map((l) => l.type)).toEqual(['background'])
+  })
+})
+
+describe('labelLanguageUpdates(地図の文字を日本語優先にする)', () => {
+  const english = ['coalesce', ['get', 'name:en'], ['get', 'name']]
+  const layers = [
+    { id: 'city', type: 'symbol', layout: { 'text-field': english } },
+    { id: 'country', type: 'symbol', layout: { 'text-field': english, 'text-size': 14 } },
+    { id: 'road-number', type: 'symbol', layout: { 'text-field': ['to-string', ['get', 'shield_text']] } },
+    { id: 'house', type: 'symbol', layout: { 'text-field': ['to-string', ['get', 'addr_housenumber']] } },
+    { id: 'icon-only', type: 'symbol', layout: { 'icon-image': 'x' } },
+    { id: 'water', type: 'fill' },
+    // 同じ指定でも、symbol 以外は、対象にしない
+    { id: 'line-with-field', type: 'line', layout: { 'text-field': english } },
+  ]
+
+  it('英語名を優先している地名のレイヤーだけを、「日本語名 → 英語名 → 現地名」にする', () => {
+    const updates = labelLanguageUpdates(layers)
+    expect(updates.map((u) => u.id)).toEqual(['city', 'country'])
+    expect((updates[0] as { expression: unknown }).expression).toEqual(['coalesce', ['get', 'name:ja'], ['get', 'name:en'], ['get', 'name']])
+  })
+
+  it('式の中に入れ子になった英語名の指定(拡大率で切り替える step など)も、その部分だけを書き換える', () => {
+    const nested = [
+      { id: 'country', type: 'symbol', layout: { 'text-field': ['step', ['zoom'], ['get', 'name:short'], 4, english] } },
+      {
+        id: 'region',
+        type: 'symbol',
+        layout: { 'text-field': ['step', ['zoom'], ['get', 'name:short'], 13, ['concat', english, ' (', ['get', 'name:short'], ')']] },
+      },
+    ]
+    const ja = ['coalesce', ['get', 'name:ja'], ['get', 'name:en'], ['get', 'name']]
+    expect(labelLanguageUpdates(nested)).toEqual([
+      { id: 'country', expression: ['step', ['zoom'], ['get', 'name:short'], 4, ja] },
+      { id: 'region', expression: ['step', ['zoom'], ['get', 'name:short'], 13, ['concat', ja, ' (', ['get', 'name:short'], ')']] },
+    ])
+  })
+
+  it('道路の番号・番地・アイコンだけのレイヤー・symbol 以外は、触らない', () => {
+    const ids = labelLanguageUpdates(layers).map((u) => u.id)
+    for (const untouched of ['road-number', 'house', 'icon-only', 'water', 'line-with-field']) {
+      expect(ids).not.toContain(untouched)
+    }
+  })
+
+  it('言語を指定できる', () => {
+    expect((labelLanguageUpdates(layers, 'ko')[0]!.expression as unknown[])[1]).toEqual(['get', 'name:ko'])
+  })
+
+  it('スタイルの指定が変わっていたら(一致しなければ)、何も変えない', () => {
+    const changed = [{ id: 'city', type: 'symbol', layout: { 'text-field': ['get', 'name:latin'] } }]
+    expect(labelLanguageUpdates(changed)).toEqual([])
+    expect(labelLanguageUpdates([])).toEqual([])
   })
 })

@@ -18,6 +18,10 @@
 |---|---|---|
 | ![新着一覧](docs/images/home.png) | ![スポット詳細](docs/images/spot-detail.png) | ![マイリスト](docs/images/mylist-mobile.png) |
 
+地図(Amazon Location Service。地名は日本語優先。ピンは、投稿の位置):
+
+![地図](docs/images/map.png)
+
 (AWS に構築した環境での、動作確認の画面です。)
 
 ## 構成

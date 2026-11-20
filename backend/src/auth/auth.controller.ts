@@ -19,6 +19,8 @@ import {
 } from '@nestjs/swagger';
 import type { CookieOptions, Request, Response } from 'express';
 import { ApiErrors } from '../common/api-doc.js';
+import { ApiError } from '../common/api-error.js';
+import { AuthRateLimiter } from './auth-rate-limiter.js';
 import { AuthService, REFRESH_TOKEN_TTL_MS } from './auth.service.js';
 import type { AuthResult } from './auth.service.js';
 import {
@@ -31,6 +33,11 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
 import type { AuthenticatedRequest } from './jwt-auth.guard.js';
 
 export const REFRESH_COOKIE = 'refresh_token';
+
+// 接続元の IP。プロキシ(CloudFront・ALB)の後ろでは、環境変数 TRUST_PROXY(プロキシの段数)を指定すると、
+// X-Forwarded-For から、本当の接続元を求める(app.setup.ts)。指定がなければ、直接の接続元
+const clientIp = (req: Request): string =>
+  req.ip ?? req.socket.remoteAddress ?? 'unknown';
 
 // リフレッシュトークンは JS から読めない HttpOnly Cookie で渡す。
 // フロントと API は同一オリジンなので SameSite=Strict にできる。
@@ -52,7 +59,10 @@ const SET_COOKIE_HEADER = {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly limiter: AuthRateLimiter,
+  ) {}
 
   @Post('register')
   @ApiOperation({
@@ -66,11 +76,13 @@ export class AuthController {
     description:
       '登録できた。アクセストークンを本文で、リフレッシュトークンを Cookie で返す',
   })
-  @ApiErrors(400, 409)
+  @ApiErrors(400, 409, 429)
   async register(
     @Body() dto: RegisterDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
+    this.limiter.assertRegisterAllowed(clientIp(req));
     return this.respond(res, await this.auth.register(dto));
   }
 
@@ -79,15 +91,29 @@ export class AuthController {
   @ApiOperation({
     summary: 'ログイン',
     description:
-      'パスワードの誤りと、未登録のメールアドレスは、同じ 401(INVALID_CREDENTIALS)を返す(アカウントの有無を知らせない)。',
+      'パスワードの誤りと、未登録のメールアドレスは、同じ 401(INVALID_CREDENTIALS)を返す(アカウントの有無を知らせない)。失敗が続くと(メールアドレスごとに 15 分間で 10 回、接続元の IP ごとに 50 回)、正しいパスワードでも 429 になる(Retry-After に、やり直せるまでの秒数)。ログインできると、そのメールアドレスの失敗の回数は 0 に戻る。',
   })
   @ApiOkResponse({ type: AuthResponse, headers: SET_COOKIE_HEADER })
-  @ApiErrors(400, 401)
+  @ApiErrors(400, 401, 429)
   async login(
     @Body() dto: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
-    return this.respond(res, await this.auth.login(dto));
+    const ip = clientIp(req);
+    this.limiter.assertLoginAllowed(ip, dto.email);
+    let result: Awaited<ReturnType<AuthService['login']>>;
+    try {
+      result = await this.auth.login(dto);
+    } catch (e) {
+      // パスワードの誤り・未登録のメールアドレスだけを、失敗として数える(サーバーの障害などは、数えない)
+      if (e instanceof ApiError && e.getStatus() === 401) {
+        this.limiter.recordLoginFailure(ip, dto.email);
+      }
+      throw e;
+    }
+    this.limiter.recordLoginSuccess(dto.email);
+    return this.respond(res, result);
   }
 
   @Post('refresh')

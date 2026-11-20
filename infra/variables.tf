@@ -56,3 +56,9 @@ variable "create_github_oidc_provider" {
   type        = bool
   default     = true
 }
+
+variable "csp_enforce" {
+  description = "CSP(ブラウザの読み込み制限)を、本適用するか。true: Content-Security-Policy(許可していない読み込みを、ブラウザが止める)、false: Report-Only(止めずに、違反を、ブラウザのコンソールに出すだけ)。画面が壊れたときは、false にして戻せる"
+  type        = bool
+  default     = true
+}

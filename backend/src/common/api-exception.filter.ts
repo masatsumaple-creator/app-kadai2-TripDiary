@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiError } from './api-error.js';
 import type { ApiErrorBody } from './api-error.js';
 
 const DEFAULT_CODES: Record<number, string> = {
@@ -15,6 +16,7 @@ const DEFAULT_CODES: Record<number, string> = {
   403: 'FORBIDDEN',
   404: 'NOT_FOUND',
   409: 'CONFLICT',
+  429: 'TOO_MANY_REQUESTS',
 };
 
 function isApiErrorBody(value: unknown): value is ApiErrorBody {
@@ -37,6 +39,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const body = exception.getResponse();
       if (isApiErrorBody(body)) {
+        if (exception instanceof ApiError && exception.retryAfterSeconds) {
+          res.setHeader('Retry-After', String(exception.retryAfterSeconds));
+        }
         res.status(status).json(body);
         return;
       }

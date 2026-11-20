@@ -31,8 +31,10 @@ RUN npm ci --omit=dev \
 COPY --from=build /app/dist ./dist
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+# RDS への接続(TLS)で、サーバーの証明書を検証するための、AWS 公式の CA の証明書(DB_SSL_CA_FILE で指定する)
+COPY certs ./certs
 # prisma.config.ts が読み込む(接続先の組み立て)
-COPY src/prisma/database-url.ts ./src/prisma/database-url.ts
+COPY src/prisma/database-url.ts src/prisma/database-ssl.ts ./src/prisma/
 
 # 非 root で実行する(node イメージの node ユーザー)
 USER node

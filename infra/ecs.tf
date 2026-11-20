@@ -44,9 +44,15 @@ resource "aws_ecs_task_definition" "app" {
       { name = "DB_HOST", value = aws_db_instance.main.address },
       { name = "DB_PORT", value = tostring(aws_db_instance.main.port) },
       { name = "DB_NAME", value = aws_db_instance.main.db_name },
+      # RDS への接続は TLS。サーバーの証明書を、この CA の証明書(イメージに同梱)で検証する
+      { name = "DB_SSL_CA_FILE", value = "/app/certs/rds-global-bundle.pem" },
       { name = "S3_BUCKET", value = aws_s3_bucket.photos.bucket },
       { name = "S3_REGION", value = var.region },
       { name = "LOCATION_REGION", value = var.region },
+      # ログインの回数の制限で、接続元の IP を、X-Forwarded-For から求めるための、信頼するプロキシの段数(CloudFront と ALB)
+      { name = "TRUST_PROXY", value = "2" },
+      # 登録は、IP ごとに 1 時間あたり 30 回まで(総当たりの登録への備え。ログインの失敗は、既定の制限)
+      { name = "REGISTER_LIMIT_PER_IP_PER_HOUR", value = "30" },
     ]
 
     # Secrets Manager の値は、起動のときに ECS が注入する(タスク定義にも state にも、値は入らない)

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { resolveDatabaseSsl } from './database-ssl.js';
 import { resolveDatabaseUrl } from './database-url.js';
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1'];
@@ -17,6 +18,8 @@ function createAdapter(databaseUrl: string): PrismaMariaDb {
     database: url.pathname.slice(1),
     // ローカルの MySQL 8(caching_sha2_password)で TLS なし接続するために必要
     allowPublicKeyRetrieval: LOCAL_HOSTS.includes(url.hostname),
+    // DB_SSL_CA_FILE があれば、TLS で接続し、サーバーの証明書を検証する
+    ssl: resolveDatabaseSsl(),
   });
 }
 

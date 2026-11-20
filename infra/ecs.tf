@@ -46,6 +46,7 @@ resource "aws_ecs_task_definition" "app" {
       { name = "DB_NAME", value = aws_db_instance.main.db_name },
       { name = "S3_BUCKET", value = aws_s3_bucket.photos.bucket },
       { name = "S3_REGION", value = var.region },
+      { name = "LOCATION_REGION", value = var.region },
     ]
 
     # Secrets Manager の値は、起動のときに ECS が注入する(タスク定義にも state にも、値は入らない)

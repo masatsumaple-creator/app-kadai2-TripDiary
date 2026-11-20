@@ -43,6 +43,7 @@ const billable = [
   ['Secrets Manager(シークレット)', () => byPrefix(aws(['secretsmanager', 'list-secrets']).SecretList.map((s) => s.Name))],
   ['CloudWatch Logs(ログのグループ)', () => aws(['logs', 'describe-log-groups', '--log-group-name-prefix', `/ecs/${project}`]).logGroups.map((g) => g.logGroupName)],
   ['S3(フロント・写真のバケット)', () => aws(['s3api', 'list-buckets']).Buckets.map((b) => b.Name).filter((n) => n.startsWith(`${project}-frontend`) || n.startsWith(`${project}-photos`))],
+  ['Cognito(ID プール)', () => (aws(['cognito-identity', 'list-identity-pools', '--max-results', '60']).IdentityPools ?? []).map((p) => p.IdentityPoolName).filter((n) => n.startsWith(project))],
   ['IAM(ロール)', () => aws(['iam', 'list-roles']).Roles.map((r) => r.RoleName).filter((n) => n.startsWith(project))],
   ['IAM(GitHub の OIDC プロバイダー)', () => aws(['iam', 'list-open-id-connect-providers']).OpenIDConnectProviderList.map((p) => p.Arn).filter((a) => a.endsWith('token.actions.githubusercontent.com'))],
   ['RDS(パラメータグループ・サブネットグループ)', () => [

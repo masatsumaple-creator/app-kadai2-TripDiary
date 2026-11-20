@@ -129,6 +129,9 @@ jobs:
         working-directory: frontend
         env:
           HIDE_MOCK: "true"
+          # 地図の表示に使う Cognito の ID プール(秘密情報ではない)。ビルドのときに、画面へ埋め込まれる
+          NUXT_PUBLIC_MAP_IDENTITY_POOL_ID: ${{ vars.MAP_IDENTITY_POOL_ID }}
+          NUXT_PUBLIC_MAP_REGION: ${{ vars.AWS_REGION }}
         run: |
           npm ci
           npm run generate

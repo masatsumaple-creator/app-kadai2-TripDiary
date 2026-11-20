@@ -6,6 +6,7 @@ import { PhotoStorage } from '../photos/photo-storage.service.js';
 import { PhotoResponse } from '../photos/photo.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { retryOnWriteConflict } from '../prisma/retry.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { viewableSpotsWhere } from './spot-visibility.js';
 import { LIST_STATUSES } from './list-status.js';
 import type { ListStatusValue } from './list-status.js';
@@ -13,6 +14,11 @@ import { SpotInputDto, VISIBILITIES } from './dto/spot.dto.js';
 import type { Visibility } from './dto/spot.dto.js';
 import { DEFAULT_PAGE_SIZE } from '../common/page-query.dto.js';
 import { ListSpotsQueryDto } from './dto/list-spots.dto.js';
+import {
+  MAP_SPOTS_LIMIT,
+  MapSpotsQueryDto,
+  MapSpotsResponse,
+} from './dto/map-spots.dto.js';
 
 // 投稿の取得時に含める関連(一覧・詳細・マイリストで共通)
 export const spotInclude = {
@@ -233,6 +239,73 @@ export class SpotsService {
     return {
       items: await Promise.all(page.map((s) => this.toListItem(s, viewerId))),
       nextCursor: rows.length > limit ? page[page.length - 1]!.id : null,
+    };
+  }
+
+  // 地図の表示範囲の中の、閲覧できる投稿(位置のあるものだけ)。一覧・詳細と同じ公開範囲の規則。
+  // 範囲内に MAP_SPOTS_LIMIT 件を超えるときは、新しいものから MAP_SPOTS_LIMIT 件にして、truncated を true にする
+  async listInBounds(
+    query: MapSpotsQueryDto,
+    viewerId?: number,
+  ): Promise<MapSpotsResponse> {
+    if (query.swLat > query.neLat) {
+      throw new ApiError(
+        400,
+        'VALIDATION_ERROR',
+        '入力内容に誤りがあります。',
+        {
+          swLat: ['南西の緯度は、北東の緯度以下にしてください。'],
+        },
+      );
+    }
+    if (query.area !== undefined) await this.assertAreaExists(query.area);
+
+    // 経度は、日付変更線をまたぐ範囲(南西の経度 > 北東の経度)なら、「南西以東、または、北東以西」
+    const longitude: Prisma.SpotWhereInput =
+      query.swLng <= query.neLng
+        ? { longitude: { gte: query.swLng, lte: query.neLng } }
+        : {
+            OR: [
+              { longitude: { gte: query.swLng } },
+              { longitude: { lte: query.neLng } },
+            ],
+          };
+
+    const rows = await this.prisma.spot.findMany({
+      where: {
+        AND: [
+          viewableSpotsWhere(viewerId),
+          { latitude: { gte: query.swLat, lte: query.neLat } },
+          longitude,
+          query.area ? { tags: { some: { tag: { name: query.area } } } } : {},
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        latitude: true,
+        longitude: true,
+        visibility: true,
+        tags: { select: { tagId: true, tag: { select: { name: true } } } },
+      },
+      orderBy: { id: 'desc' },
+      // 省いた分があるかを判定するため、1 件多く取る
+      take: MAP_SPOTS_LIMIT + 1,
+    });
+
+    return {
+      items: rows.slice(0, MAP_SPOTS_LIMIT).map((s) => ({
+        id: s.id,
+        name: s.name,
+        // 検索条件で、位置のあるものだけに絞っている
+        latitude: s.latitude!,
+        longitude: s.longitude!,
+        areas: [...s.tags]
+          .sort((a, b) => a.tagId - b.tagId)
+          .map((t) => t.tag.name),
+        visibility: s.visibility,
+      })),
+      truncated: rows.length > MAP_SPOTS_LIMIT,
     };
   }
 

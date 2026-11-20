@@ -60,8 +60,15 @@ resource "aws_cloudfront_function" "spa_fallback" {
   EOT
 }
 
-# セキュリティヘッダー。CSP は、変数 csp_enforce で、本適用(Content-Security-Policy)か、違反を報告するだけ(Report-Only)かを切り替える(既定は本適用)。
-# 画面が壊れたときは、-var csp_enforce=false で、すぐに Report-Only に戻せる
+# CSP(ブラウザの読み込み制限)の内容。許可するのは、このサイト・写真のバケット(S3)・地図(Amazon Location)・Cognito だけ
+locals {
+  csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://${aws_s3_bucket.photos.bucket_regional_domain_name}; connect-src 'self' https://${aws_s3_bucket.photos.bucket_regional_domain_name} https://maps.geo.${var.region}.amazonaws.com https://cognito-identity.${var.region}.amazonaws.com; worker-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+}
+
+# セキュリティヘッダー。CSP は、変数 csp_enforce で、本適用か、違反を報告するだけ(Report-Only)かを切り替える(既定は本適用)。
+# 画面が壊れたときは、-var csp_enforce=false で、すぐに Report-Only に戻せる。
+# ※ 本適用の CSP は、CloudFront では、カスタムヘッダーではなく、専用の設定(content_security_policy)で指定する
+#   (カスタムヘッダーに Content-Security-Policy を書くと、400 で作れない)。Report-Only は、カスタムヘッダーで指定できる
 resource "aws_cloudfront_response_headers_policy" "security" {
   name = "${var.project}-security-headers"
 
@@ -86,6 +93,15 @@ resource "aws_cloudfront_response_headers_policy" "security" {
       referrer_policy = "strict-origin-when-cross-origin"
       override        = true
     }
+
+    dynamic "content_security_policy" {
+      for_each = var.csp_enforce ? [1] : []
+
+      content {
+        content_security_policy = local.csp
+        override                = true
+      }
+    }
   }
 
   custom_headers_config {
@@ -95,10 +111,14 @@ resource "aws_cloudfront_response_headers_policy" "security" {
       override = true
     }
 
-    items {
-      header   = var.csp_enforce ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only"
-      value    = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://${aws_s3_bucket.photos.bucket_regional_domain_name}; connect-src 'self' https://${aws_s3_bucket.photos.bucket_regional_domain_name} https://maps.geo.${var.region}.amazonaws.com https://cognito-identity.${var.region}.amazonaws.com; worker-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-      override = true
+    dynamic "items" {
+      for_each = var.csp_enforce ? [] : [1]
+
+      content {
+        header   = "Content-Security-Policy-Report-Only"
+        value    = local.csp
+        override = true
+      }
     }
   }
 }

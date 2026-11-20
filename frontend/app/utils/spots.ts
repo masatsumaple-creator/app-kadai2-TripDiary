@@ -1,4 +1,5 @@
 import type { ListStatus } from './lists'
+import type { SpotPhoto } from './photos'
 import type { Visibility } from './spotMeta'
 
 // バックエンドの応答の型(docs/20_設計書.md のスポット API)
@@ -14,6 +15,8 @@ export interface SpotListItem {
   visibility: Visibility
   author: Author
   isMine: boolean
+  // 代表の写真(先頭の 1 枚)の URL。写真がなければ null。URL は期限つき
+  coverPhotoUrl: string | null
   likeCount: number
   commentCount: number
   createdAt: string
@@ -24,11 +27,14 @@ export interface SpotListResponse {
   nextCursor: number | null
 }
 
-export interface Spot extends SpotListItem {
+// 詳細は、代表の写真ではなく、すべての写真(photos)を持つ
+export interface Spot extends Omit<SpotListItem, 'coverPhotoUrl'> {
   review: string | null
   address: string | null
   latitude: number | null
   longitude: number | null
+  // 写真(表示順)。URL は期限つき
+  photos: SpotPhoto[]
   // 閲覧者がいいね済みか(未ログインは false)
   liked: boolean
   // 閲覧者のマイリストでの状態(リストにない・未ログインは null。自分の投稿は常に visited)
@@ -128,6 +134,8 @@ export interface CardSpot {
   areas: string[]
   visibility: Visibility
   authorName: string
+  // 代表の写真の URL(なければ、色のグラデーション)
+  coverPhotoUrl?: string | null
   // 本実装ではまだ持っていない項目(モック画面でのみ使う)
   likes?: number
   photoCount?: number
@@ -141,6 +149,7 @@ export function toCardSpot(item: SpotListItem): CardSpot {
     areas: item.areas,
     visibility: item.visibility,
     authorName: item.author.name,
+    coverPhotoUrl: item.coverPhotoUrl,
     likes: item.likeCount,
   }
 }

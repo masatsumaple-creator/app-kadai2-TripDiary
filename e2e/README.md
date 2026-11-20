@@ -4,7 +4,7 @@
 方針と構成は `docs/20_設計書.md` の「テストの方針」「E2E の構成」を参照してください。
 
 ## 前提
-- Docker Desktop が起動していて、DB(`docker compose up -d db`)が動いている
+- Docker Desktop が起動していて、DB と、写真の置き場(S3 互換のサーバー、S3Mock)が動いている(`docker compose up -d db s3`)
 - E2E 用の DB `tripdiary_e2e` がある(新しく作った DB なら自動で作成済み。既存の DB には設計書の手順で一度だけ作成)
 - 初回のみ: `npm install` と `npx playwright install chromium`
 
@@ -27,8 +27,8 @@ npx playwright test -g "新規登録"   # 名前で絞り込む
 | `global-setup.ts` / `global-teardown.ts` | 実行前: マイグレーション・残りの削除・ウォームアップ。実行後: テスト用ユーザーの削除 |
 | `fixtures/api.ts` | API でユーザー・投稿を作る、ブラウザをログイン済みにする |
 | `pages/` | ページオブジェクト(ログイン、投稿フォーム) |
-| `tests/` | テスト本体(`auth`、`spots`、`paging`、`security`、`a11y`、`responsive`) |
-| `support/` | 接続先の設定、DB の後始末、アクセシビリティの検査(`a11y.ts`) |
+| `tests/` | テスト本体(`auth`、`spots`、`photos`、`paging`、`security`、`a11y`、`responsive` など) |
+| `support/` | 接続先の設定(DB・ポート・S3)、DB の後始末、アクセシビリティの検査(`a11y.ts`)、テスト用の PNG の生成(`png.ts`) |
 
 ## テストを書くときの決まり
 - ユーザーも投稿名もテストごとに一意にする(`registerUser`、`uniqueName`)。結果は自分のデータだけで判定する

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ApiError } from '~/utils/api'
+import { PhotoUploadError } from '~/utils/photos'
 import { prefectures, visibilityLabels } from '~/utils/spotMeta'
 import {
   emptySpotForm,
@@ -7,12 +8,29 @@ import {
   toSpotInput,
   type Spot,
 } from '~/utils/spots'
+import type { PhotoItem } from '~/components/PhotoPicker.vue'
 
 // spot を渡すと編集、渡さなければ新規投稿
 const props = defineProps<{ spot?: Spot }>()
 
 const api = useSpotsApi()
+const photosApi = usePhotosApi()
 const form = reactive(props.spot ? spotToForm(props.spot) : emptySpotForm())
+
+// 写真。編集のときは、すでに付いている写真から始める
+const photoItems = ref<PhotoItem[]>(
+  (props.spot?.photos ?? []).map((p) => ({
+    key: `existing-${p.id}`,
+    kind: 'existing' as const,
+    id: p.id,
+    previewUrl: p.url,
+  })),
+)
+// 保存済みの投稿の ID。写真の送信に失敗して、画面に残ったまま、もう一度保存するとき、
+// 投稿を重複して作らないように、更新にする
+const savedId = ref<number | undefined>(props.spot?.id)
+// サーバーにある写真の ID(外された写真を、保存のときに削除するため)
+const serverPhotoIds = ref<number[]>((props.spot?.photos ?? []).map((p) => p.id))
 const fieldErrors = ref<Record<string, string[]>>({})
 const formError = ref('')
 const locationMessage = ref('')
@@ -61,15 +79,70 @@ function clearLocation() {
   locationMessage.value = ''
 }
 
+const patchItem = (key: string, patch: Partial<PhotoItem>) => {
+  photoItems.value = photoItems.value.map((i) =>
+    i.key === key ? { ...i, ...patch } : i,
+  )
+}
+
+// 失敗した枚数を返す
+async function syncPhotos(spotId: number): Promise<number> {
+  let failures = 0
+
+  const keptIds = new Set(
+    photoItems.value.filter((i) => i.kind === 'existing').map((i) => i.id),
+  )
+  for (const id of serverPhotoIds.value.filter((id) => !keptIds.has(id))) {
+    try {
+      await photosApi.remove(spotId, id)
+    } catch (e) {
+      // すでにない(404)なら、目的は果たしている
+      if (!(e instanceof ApiError && e.status === 404)) {
+        failures++
+        continue
+      }
+    }
+    serverPhotoIds.value = serverPhotoIds.value.filter((x) => x !== id)
+  }
+
+  for (const item of photoItems.value.filter((i) => i.kind === 'new')) {
+    patchItem(item.key, { status: 'uploading', error: undefined })
+    try {
+      const photo = await photosApi.upload(spotId, item.blob!)
+      // 送信できた写真は、既存の写真にする(再保存のとき、二重に送らない)
+      patchItem(item.key, { kind: 'existing', id: photo.id, blob: undefined, status: undefined })
+      serverPhotoIds.value = [...serverPhotoIds.value, photo.id]
+    } catch (e) {
+      failures++
+      patchItem(item.key, {
+        status: 'failed',
+        error:
+          e instanceof PhotoUploadError || e instanceof ApiError
+            ? e.message
+            : '送信できませんでした。',
+      })
+    }
+  }
+  return failures
+}
+
 async function submit() {
   fieldErrors.value = {}
   formError.value = ''
   submitting.value = true
   try {
     const input = toSpotInput(form)
-    const saved = props.spot
-      ? await api.update(props.spot.id, input)
+    const saved = savedId.value
+      ? await api.update(savedId.value, input)
       : await api.create(input)
+    savedId.value = saved.id
+
+    // 写真: 外されたものを削除し、新しいものを 1 枚ずつ送信する。失敗した写真は残して、もう一度保存すると送り直す
+    const failures = await syncPhotos(saved.id)
+    if (failures > 0) {
+      formError.value = `投稿は保存しましたが、${failures} 枚の写真を送信できませんでした。もう一度「保存」を押すと、送信し直します。`
+      return
+    }
     await navigateTo(`/spots/${saved.id}`)
   } catch (e) {
     if (e instanceof ApiError) {
@@ -122,9 +195,7 @@ const errorsOf = (...keys: string[]) =>
       >
     </label>
 
-    <p class="rounded bg-gray-100 px-3 py-2 text-sm text-gray-600">
-      写真のアップロードは準備中です。
-    </p>
+    <PhotoPicker v-model="photoItems" :disabled="submitting" />
 
     <fieldset
       class="space-y-2 rounded border border-gray-200 bg-white p-3 text-sm"

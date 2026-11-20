@@ -8,6 +8,8 @@ import {
   FRONTEND_DIR,
   FRONTEND_PORT,
   JWT_SECRET,
+  S3_BUCKET,
+  S3_ENDPOINT,
 } from './support/env'
 
 const isCI = !!process.env['CI']
@@ -60,6 +62,12 @@ export default defineConfig({
         PORT: String(BACKEND_PORT),
         DATABASE_URL,
         JWT_SECRET,
+        // 写真の置き場(S3 互換のサーバー)
+        S3_ENDPOINT,
+        S3_BUCKET,
+        S3_REGION: 'ap-northeast-1',
+        AWS_ACCESS_KEY_ID: 'e2e',
+        AWS_SECRET_ACCESS_KEY: 'e2e',
       },
     },
     {

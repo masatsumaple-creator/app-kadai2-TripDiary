@@ -15,6 +15,10 @@ export const DATABASE_URL =
 // テスト専用の値(本物の秘密情報ではない)
 export const JWT_SECRET = 'e2e-only-jwt-secret-not-used-anywhere-else'
 
+// 写真の置き場(S3 互換のサーバー。docker compose up -d s3 の S3Mock)。CI でも同じ値(ci.yml のサービス)
+export const S3_ENDPOINT = process.env['E2E_S3_ENDPOINT'] ?? 'http://localhost:9090'
+export const S3_BUCKET = 'tripdiary-e2e'
+
 // E2E が作るユーザーのメールの接頭辞。後始末で、この接頭辞のユーザーだけを消す
 export const E2E_EMAIL_PREFIX = 'e2e_'
 

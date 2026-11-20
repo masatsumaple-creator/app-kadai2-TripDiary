@@ -339,6 +339,5 @@ test.describe('フォロー中の一覧(S-03)', () => {
     await signIn(page, me)
     await page.goto('/following')
     await expect(page.getByTestId('list-empty')).toBeVisible()
-    await expect(page.getByTestId('mock-notice')).toHaveCount(0)
   })
 })

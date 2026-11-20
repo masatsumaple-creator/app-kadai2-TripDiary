@@ -1,10 +1,12 @@
 import { useAuthStore } from '~/stores/auth'
+import { boundsToQuery, type Bounds } from '~/utils/map'
 import {
   buildListQuery,
   type ListParams,
   type LikeState,
   type Spot,
   type SpotInput,
+  type MapSpotsResponse,
   type SpotListResponse,
 } from '~/utils/spots'
 
@@ -14,6 +16,9 @@ export function useSpotsApi() {
   return {
     list: (params: ListParams = {}) =>
       authFetch<SpotListResponse>(`/api/spots${buildListQuery(params)}`),
+    // 地図の表示範囲の中の投稿(位置のあるもの。最大 100 件)
+    inBounds: (bounds: Bounds, area?: string) =>
+      authFetch<MapSpotsResponse>(`/api/spots/map${boundsToQuery(bounds, area)}`),
     get: (id: number) => authFetch<Spot>(`/api/spots/${id}`),
     create: (input: SpotInput) =>
       authFetch<Spot>('/api/spots', { method: 'POST', json: input }),

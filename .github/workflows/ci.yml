@@ -109,14 +109,6 @@ jobs:
       - run: npm test
       # デプロイと同じ静的出力が作れることを確認する
       - run: npm run generate
-      # 本番のビルド(HIDE_MOCK=true)に、ダミーデータの画面(/mock、/map)が入っていないことを確認する
-      - name: Production build excludes mock pages
-        run: |
-          HIDE_MOCK=true npm run generate
-          if grep -rq "清水寺" .output/public; then
-            echo "mock data is included in the production build" >&2
-            exit 1
-          fi
 
   e2e:
     name: E2E (Playwright)

@@ -85,10 +85,10 @@ aws ecs wait tasks-stopped --cluster tripdiary --tasks <タスクの ARN>
 
 ### フロントの配置(L4 以降)
 
-本番用にビルド(**`HIDE_MOCK=true`** で、ダミーの画面 `/mock`・`/map` を外す)し、S3 に置く。CloudFront の URL は `terraform output cloudfront_domain_name`:
+本番用にビルドして、S3 に置く(通常は、デプロイのワークフローが行う)。地図の表示には、`NUXT_PUBLIC_MAP_IDENTITY_POOL_ID`(`terraform output` の `github_actions_variables` の `MAP_IDENTITY_POOL_ID`)を、ビルドのときに渡す。CloudFront の URL は `terraform output cloudfront_domain_name`:
 
 ```bash
-(cd frontend && HIDE_MOCK=true npm run generate)
+(cd frontend && NUXT_PUBLIC_MAP_IDENTITY_POOL_ID=<ID プール> NUXT_PUBLIC_MAP_REGION=ap-northeast-1 npm run generate)
 aws s3 sync frontend/.output/public s3://$(terraform -chdir=infra output -raw frontend_bucket) --delete
 # 作り直しのあとは不要。内容を更新したときは、キャッシュを無効にする:
 aws cloudfront create-invalidation --distribution-id $(terraform -chdir=infra output -raw cloudfront_distribution_id) --paths "/*"

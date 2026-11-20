@@ -261,6 +261,5 @@ test.describe('マイリスト(S-06)', () => {
     await signIn(page, me)
     await page.goto('/me/list')
     await expect(page.getByTestId('list-empty')).toBeVisible()
-    await expect(page.getByTestId('mock-notice')).toHaveCount(0)
   })
 })

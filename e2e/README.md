@@ -27,7 +27,7 @@ npx playwright test -g "新規登録"   # 名前で絞り込む
 | `global-setup.ts` / `global-teardown.ts` | 実行前: マイグレーション・残りの削除・ウォームアップ。実行後: テスト用ユーザーの削除 |
 | `fixtures/api.ts` | API でユーザー・投稿を作る、ブラウザをログイン済みにする |
 | `pages/` | ページオブジェクト(ログイン、投稿フォーム) |
-| `tests/` | テスト本体(`auth`、`spots`、`photos`、`paging`、`security`、`a11y`、`responsive` など) |
+| `tests/` | テスト本体(`auth`、`spots`、`photos`、`map`、`paging`、`security`、`a11y`、`responsive` など) |
 | `support/` | 接続先の設定(DB・ポート・S3)、DB の後始末、アクセシビリティの検査(`a11y.ts`)、テスト用の PNG の生成(`png.ts`) |
 
 ## テストを書くときの決まり

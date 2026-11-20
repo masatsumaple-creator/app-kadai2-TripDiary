@@ -30,4 +30,10 @@ npm run dev     # http://localhost:5173
 | `composables/` `stores/` | API 呼び出し・認証の状態(Pinia) |
 | `utils/` | 共通の関数 |
 
-画面は、E2E(`../e2e`)から見つけやすいよう、操作する要素に `data-testid` を付けています。地図とダミーデータ(`/mock`)は準備中です。
+画面は、E2E(`../e2e`)から見つけやすいよう、操作する要素に `data-testid` を付けています。
+
+
+## 地図
+
+- MapLibre GL JS で、Amazon Location Service の地図を表示します(`components/SpotMap.vue`)。**AWS の地図の表示には、ビルドのときの環境変数 `NUXT_PUBLIC_MAP_IDENTITY_POOL_ID`(Cognito の ID プール)が要ります**。指定がなければ、地図の絵のない背景になり(開発・テスト用)、AWS に接続せずに、ピン・クリック・ドラッグだけを確かめられます。
+- 住所の取得(「現在地から入力」)は、バックエンドの API(`GET /api/geocode/reverse`)を呼びます。

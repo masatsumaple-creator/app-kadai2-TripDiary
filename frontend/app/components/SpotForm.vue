@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ApiError } from '~/utils/api'
+import { formatLatLng, type LngLat } from '~/utils/map'
 import { PhotoUploadError } from '~/utils/photos'
 import { prefectures, visibilityLabels } from '~/utils/spotMeta'
 import {
@@ -15,6 +16,7 @@ const props = defineProps<{ spot?: Spot }>()
 
 const api = useSpotsApi()
 const photosApi = usePhotosApi()
+const geocodeApi = useGeocodeApi()
 const form = reactive(props.spot ? spotToForm(props.spot) : emptySpotForm())
 
 // 写真。編集のときは、すでに付いている写真から始める
@@ -35,6 +37,15 @@ const fieldErrors = ref<Record<string, string[]>>({})
 const formError = ref('')
 const locationMessage = ref('')
 const submitting = ref(false)
+const locating = ref(false)
+const geocoding = ref(false)
+const mapRef = ref<{ flyTo: (p: LngLat, zoom?: number) => void }>()
+// 地図のピン(位置が決まっているときだけ)
+const pins = computed(() =>
+  form.latitude !== null && form.longitude !== null
+    ? [{ id: 0, name: form.name.trim() || '投稿の位置', lat: form.latitude, lng: form.longitude }]
+    : [],
+)
 
 const canSave = computed(
   () => form.name.trim() !== '' && form.areas.length >= 1 && !submitting.value,
@@ -50,24 +61,53 @@ function addArea(e: Event) {
   el.value = ''
 }
 
-// ブラウザの位置情報で緯度・経度を入れる。住所への変換(逆ジオコーディング)は地図の導入後に対応するため、住所は手入力
+// 位置を設定する(小数 6 桁。約 0.1m)
+function setPosition(p: LngLat) {
+  form.latitude = Number(p.lat.toFixed(6))
+  form.longitude = Number(p.lng.toFixed(6))
+}
+
+// この位置の住所を調べて、住所の欄に入れる(利用者が押したときだけ。地図を動かすたびには、呼ばない)
+async function fillAddress() {
+  if (form.latitude === null || form.longitude === null) return
+  geocoding.value = true
+  try {
+    const address = await geocodeApi.reverse(form.latitude, form.longitude)
+    if (address) {
+      form.address = address.slice(0, 255)
+      locationMessage.value = '住所を入力しました。違うときは、書き換えてください。'
+    } else {
+      locationMessage.value = 'この位置の住所が見つかりませんでした。住所を手入力してください。'
+    }
+  } catch (e) {
+    locationMessage.value =
+      e instanceof ApiError ? e.message : '住所を取得できませんでした。住所を手入力してください。'
+  } finally {
+    geocoding.value = false
+  }
+}
+
+// ブラウザの位置情報で、位置(緯度・経度)と住所を入れる。許可されない・取得できないときは、手入力
 function fromCurrentLocation() {
   locationMessage.value = ''
   if (!('geolocation' in navigator)) {
     locationMessage.value =
-      'このブラウザでは位置情報を使えません。住所を手入力してください。'
+      'このブラウザでは位置情報を使えません。地図をタップするか、住所を手入力してください。'
     return
   }
+  locating.value = true
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      form.latitude = Number(pos.coords.latitude.toFixed(6))
-      form.longitude = Number(pos.coords.longitude.toFixed(6))
-      locationMessage.value =
-        '現在地の緯度・経度を設定しました。住所は手入力してください。'
+    async (pos) => {
+      const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      setPosition(p)
+      mapRef.value?.flyTo(p)
+      locating.value = false
+      await fillAddress()
     },
     () => {
+      locating.value = false
       locationMessage.value =
-        '現在地を取得できませんでした(許可されていない、または取得に失敗しました)。住所を手入力してください。'
+        '現在地を取得できませんでした(許可されていない、または取得に失敗しました)。地図をタップするか、住所を手入力してください。'
     },
     { timeout: 10_000 },
   )
@@ -201,24 +241,37 @@ const errorsOf = (...keys: string[]) =>
       class="space-y-2 rounded border border-gray-200 bg-white p-3 text-sm"
     >
       <legend class="px-1">場所</legend>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button
           type="button"
-          class="rounded border border-gray-300 px-3 py-1.5"
+          class="rounded border border-gray-300 px-3 py-1.5 disabled:opacity-50"
+          :disabled="locating || geocoding"
+          data-testid="current-location"
           @click="fromCurrentLocation"
         >
-          📍 現在地から入力
+          {{ locating ? '現在地を取得中…' : '📍 現在地から入力' }}
+        </button>
+        <button
+          v-if="hasLocation"
+          type="button"
+          class="rounded border border-gray-300 px-3 py-1.5 disabled:opacity-50"
+          :disabled="locating || geocoding"
+          data-testid="fill-address"
+          @click="fillAddress"
+        >
+          {{ geocoding ? '住所を調べ中…' : 'この位置の住所を入力' }}
         </button>
         <button
           v-if="hasLocation"
           type="button"
           class="text-gray-500 underline"
+          data-testid="clear-location"
           @click="clearLocation"
         >
           位置情報を消す
         </button>
       </div>
-      <p v-if="locationMessage" class="text-xs text-gray-600" role="status">
+      <p v-if="locationMessage" class="text-xs text-gray-600" role="status" data-testid="location-message">
         {{ locationMessage }}
       </p>
       <label class="block space-y-1">
@@ -236,8 +289,8 @@ const errorsOf = (...keys: string[]) =>
           >{{ m }}</span
         >
       </label>
-      <p class="text-xs text-gray-500">
-        緯度経度: {{ form.latitude ?? '-' }}, {{ form.longitude ?? '-' }}
+      <p class="text-xs text-gray-500" data-testid="lat-lng">
+        緯度経度: {{ form.latitude !== null && form.longitude !== null ? formatLatLng({ lat: form.latitude, lng: form.longitude }) : '-, -' }}
       </p>
       <span
         v-for="m in errorsOf('latitude', 'longitude')"
@@ -246,19 +299,18 @@ const errorsOf = (...keys: string[]) =>
         >{{ m }}</span
       >
       <p class="text-xs text-gray-500">
-        地図上で位置を指定・調整する機能は、地図の導入後に対応します。
+        地図をタップするとピンを置けます。ピンはドラッグで動かせます(住所は、「この位置の住所を入力」で、自動入力できます)。
       </p>
       <SpotMap
-        v-if="form.latitude !== null && form.longitude !== null"
-        :spots="[
-          {
-            id: 0,
-            name: form.name || '位置',
-            lat: form.latitude,
-            lng: form.longitude,
-          },
-        ]"
-        class="h-40"
+        ref="mapRef"
+        :markers="pins"
+        pickable
+        draggable
+        label="位置の指定"
+        class="h-64"
+        data-testid="position-map"
+        @pick="setPosition"
+        @drag="setPosition"
       />
     </fieldset>
 

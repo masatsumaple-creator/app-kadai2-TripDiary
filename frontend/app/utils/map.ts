@@ -100,3 +100,41 @@ export const OFFLINE_STYLE = {
   sources: {},
   layers: [{ id: 'background', type: 'background' as const, paint: { 'background-color': '#e6eef5' } }],
 }
+
+// ---- 地図の文字(ラベル)を日本語にする -------------------------------------------------------
+// Amazon Location の標準のスタイルは、地名を「英語名(name:en)、なければ現地名(name)」で表示する。
+// 地図のデータ(タイル)には、各言語の名前(name:ja など)が入っているため、スタイルの指定を、
+// 「日本語名 → 英語名 → 現地名」の順に書き換える。
+export interface StyleLayerLike {
+  id: string
+  type: string
+  layout?: Record<string, unknown>
+}
+
+// 標準のスタイルが、地名に使っている指定。この部分だけを書き換える(式の中に入れ子になっていても、同じ。
+// 例: 拡大率によって、略称と地名を切り替える step)。道路の番号や番地など、ほかの文字の指定は、触らない
+const ENGLISH_LABEL = JSON.stringify(['coalesce', ['get', 'name:en'], ['get', 'name']])
+
+function replaceLabel(expr: unknown, replacement: unknown[]): { value: unknown; changed: boolean } {
+  if (!Array.isArray(expr)) return { value: expr, changed: false }
+  if (JSON.stringify(expr) === ENGLISH_LABEL) return { value: replacement, changed: true }
+  let changed = false
+  const value = expr.map((e) => {
+    const r = replaceLabel(e, replacement)
+    changed ||= r.changed
+    return r.value
+  })
+  return { value, changed }
+}
+
+// 書き換えるレイヤーと、新しい text-field の式を返す(一致する指定がないレイヤーは、含めない)
+export function labelLanguageUpdates(layers: StyleLayerLike[], lang = 'ja'): { id: string; expression: unknown }[] {
+  const replacement = ['coalesce', ['get', `name:${lang}`], ['get', 'name:en'], ['get', 'name']]
+  const updates: { id: string; expression: unknown }[] = []
+  for (const l of layers) {
+    if (l.type !== 'symbol') continue
+    const r = replaceLabel(l.layout?.['text-field'], replacement)
+    if (r.changed) updates.push({ id: l.id, expression: r.value })
+  }
+  return updates
+}

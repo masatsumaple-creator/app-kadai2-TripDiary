@@ -21,6 +21,9 @@ npm run start:dev              # http://localhost:3000(API は /api、仕様書�
 | `S3_BUCKET` `S3_REGION` `S3_ENDPOINT` | 写真の置き場。`S3_BUCKET` は必須(なければ、写真のアップロードだけが 503 になる)。`S3_ENDPOINT` は、ローカルの S3 互換サーバー用(`docker compose up -d s3`。AWS では付けない)。認証は、AWS の標準(ECS ではタスクロール。ローカルは `AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`) |
 | `LOCATION_REGION` | 住所の取得(Amazon Location Service)のリージョン(既定は ap-northeast-1)。認証は、AWS の標準(ECS ではタスクロール。ローカルで試すときは、AWS の認証情報が要る。テストは AWS に接続しない) |
 | `SWAGGER_ENABLED` | Swagger UI(`/api/docs`)を公開するか。`true` / `false`。未設定のときは、本番(`NODE_ENV=production`)以外で公開 |
+| `DB_SSL_CA_FILE` | DB への接続を TLS にし、サーバーの証明書を、この CA の証明書で検証する。AWS では `/app/certs/rds-global-bundle.pem`(イメージに同梱)。ローカルは、指定なし(TLS なし) |
+| `TRUST_PROXY` | 信頼するプロキシの段数(AWS では 2: CloudFront と ALB)。ログインの回数の制限で、接続元の IP を、X-Forwarded-For から求める。指定がなければ、無視 |
+| `LOGIN_FAILURE_LIMIT_PER_EMAIL` `LOGIN_FAILURE_LIMIT_PER_IP` `LOGIN_FAILURE_WINDOW_SECONDS` `REGISTER_LIMIT_PER_IP_PER_HOUR` | ログインの失敗(既定: メールアドレスごとに 10 回、IP ごとに 50 回、15 分間)と、登録(IP ごとに 1 時間あたり。既定は制限なし)の上限 |
 | `PORT` | 待ち受けポート(既定 3000) |
 | `NODE_ENV` | `production` のとき、リフレッシュトークンの Cookie に `Secure` を付ける |
 

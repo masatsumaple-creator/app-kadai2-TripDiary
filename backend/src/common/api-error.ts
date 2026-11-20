@@ -13,6 +13,8 @@ export class ApiError extends HttpException {
     code: string,
     message: string,
     fieldErrors?: Record<string, string[]>,
+    // 429 のとき、何秒後にやり直せるか(Retry-After ヘッダーになる)
+    public readonly retryAfterSeconds?: number,
   ) {
     const body: ApiErrorBody = { code, message };
     if (fieldErrors) body.fieldErrors = fieldErrors;

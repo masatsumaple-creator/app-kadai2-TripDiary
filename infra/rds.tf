@@ -26,6 +26,12 @@ resource "aws_db_parameter_group" "main" {
     value = "utf8mb4_0900_ai_ci"
   }
 
+  # TLS(暗号化)でない接続を、サーバー側で拒否する(アプリは、AWS 公式の CA の証明書で、サーバーを検証して接続する)
+  parameter {
+    name  = "require_secure_transport"
+    value = "1"
+  }
+
   tags = { Name = "${var.project}-mysql84" }
 }
 

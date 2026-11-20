@@ -56,3 +56,26 @@ describe('resolveDatabaseUrl', () => {
     expect(() => resolveDatabaseUrl({})).toThrow(/DATABASE_URL is not set/);
   });
 });
+
+describe('resolveDatabaseUrl(TLS)', () => {
+  const base = { DB_HOST: 'h', DB_NAME: 'd', DB_USER: 'u', DB_PASSWORD: 'p' };
+
+  it('DB_SSL_CA_FILE があれば、組み立てた URL に、TLS の指定が付く', () => {
+    expect(resolveDatabaseUrl({ ...base, DB_SSL_CA_FILE: '/ca.pem' })).toBe(
+      `mysql://u:p@h:3306/d?sslaccept=strict&sslcert=${encodeURIComponent('/ca.pem')}`,
+    );
+  });
+
+  it('DATABASE_URL を直接指定した場合も、TLS の指定が付く', () => {
+    expect(
+      resolveDatabaseUrl({
+        DATABASE_URL: 'mysql://a:b@h:1/d',
+        DB_SSL_CA_FILE: '/ca.pem',
+      }),
+    ).toContain('sslaccept=strict');
+  });
+
+  it('DB_SSL_CA_FILE がなければ、TLS の指定は付かない', () => {
+    expect(resolveDatabaseUrl(base)).toBe('mysql://u:p@h:3306/d');
+  });
+});

@@ -49,6 +49,7 @@ const ERROR_DESCRIPTIONS: Record<number, string> = {
   403: '権限がない(FORBIDDEN)',
   404: '見つからない。閲覧できない投稿・ユーザーも、存在しない場合と同じ 404 を返し、存在を知らせない(NOT_FOUND)',
   409: 'すでに登録されている(CONFLICT)',
+  429: '回数の制限に達した(TOO_MANY_REQUESTS)。Retry-After ヘッダーに、やり直せるまでの秒数',
 };
 
 // エラー応答(すべて ApiErrorResponse の形)を、ステータスごとに説明する

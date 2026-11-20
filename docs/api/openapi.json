@@ -100,6 +100,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "回数の制限に達した(TOO_MANY_REQUESTS)。Retry-After ヘッダーに、やり直せるまでの秒数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
         "summary": "新規登録",
@@ -110,7 +120,7 @@
     },
     "/api/auth/login": {
       "post": {
-        "description": "パスワードの誤りと、未登録のメールアドレスは、同じ 401(INVALID_CREDENTIALS)を返す(アカウントの有無を知らせない)。",
+        "description": "パスワードの誤りと、未登録のメールアドレスは、同じ 401(INVALID_CREDENTIALS)を返す(アカウントの有無を知らせない)。失敗が続くと(メールアドレスごとに 15 分間で 10 回、接続元の IP ごとに 50 回)、正しいパスワードでも 429 になる(Retry-After に、やり直せるまでの秒数)。ログインできると、そのメールアドレスの失敗の回数は 0 に戻る。",
         "operationId": "AuthController_login",
         "parameters": [],
         "requestBody": {
@@ -154,6 +164,16 @@
           },
           "401": {
             "description": "ログインが必要、またはトークンが不正・期限切れ(UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の制限に達した(TOO_MANY_REQUESTS)。Retry-After ヘッダーに、やり直せるまでの秒数",
             "content": {
               "application/json": {
                 "schema": {

@@ -60,7 +60,8 @@ resource "aws_cloudfront_function" "spa_fallback" {
   EOT
 }
 
-# セキュリティヘッダー。CSP は、まず Report-Only で入れる(画面が壊れないことを確認してから、本適用する)
+# セキュリティヘッダー。CSP は、変数 csp_enforce で、本適用(Content-Security-Policy)か、違反を報告するだけ(Report-Only)かを切り替える(既定は本適用)。
+# 画面が壊れたときは、-var csp_enforce=false で、すぐに Report-Only に戻せる
 resource "aws_cloudfront_response_headers_policy" "security" {
   name = "${var.project}-security-headers"
 
@@ -95,7 +96,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
     }
 
     items {
-      header   = "Content-Security-Policy-Report-Only"
+      header   = var.csp_enforce ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only"
       value    = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://${aws_s3_bucket.photos.bucket_regional_domain_name}; connect-src 'self' https://${aws_s3_bucket.photos.bucket_regional_domain_name} https://maps.geo.${var.region}.amazonaws.com https://cognito-identity.${var.region}.amazonaws.com; worker-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
       override = true
     }

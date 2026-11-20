@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { visibilityLabels } from '~/utils/spotMeta'
 import { hueOf, type CardSpot } from '~/utils/spots'
 
@@ -14,7 +15,17 @@ const hue = computed(() => props.spot.hue ?? hueOf(props.spot.id))
     class="block overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:shadow-md"
     data-testid="spot-card"
   >
+    <!-- 写真があれば代表の写真、なければ色のグラデーション -->
+    <img
+      v-if="spot.coverPhotoUrl"
+      :src="spot.coverPhotoUrl"
+      :alt="`${spot.name}の写真`"
+      loading="lazy"
+      class="h-40 w-full object-cover"
+      data-testid="spot-card-photo"
+    >
     <div
+      v-else
       class="flex h-40 items-center justify-center text-sm text-white/80"
       :style="{
         background: `linear-gradient(135deg, hsl(${hue} 60% 55%), hsl(${hue + 40} 60% 35%))`,

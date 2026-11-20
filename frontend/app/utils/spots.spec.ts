@@ -18,6 +18,7 @@ const item = (id: number, overrides: Partial<SpotListItem> = {}): SpotListItem =
   visibility: 'public',
   author: { id: 1, name: 'はるか' },
   isMine: false,
+  coverPhotoUrl: null,
   likeCount: 0,
   commentCount: 0,
   createdAt: '2026-11-14T00:00:00.000Z',
@@ -52,6 +53,7 @@ describe('spotToForm', () => {
       address: null,
       latitude: null,
       longitude: null,
+      photos: [],
       liked: false,
       listStatus: null,
       updatedAt: '2026-11-14T00:00:00.000Z',
@@ -74,6 +76,7 @@ describe('spotToForm', () => {
       address: null,
       latitude: null,
       longitude: null,
+      photos: [],
       liked: false,
       listStatus: null,
       updatedAt: '',
@@ -102,13 +105,14 @@ describe('buildListQuery', () => {
 })
 
 describe('toCardSpot / hueOf', () => {
-  it('一覧の項目をカード表示用にする(いいね数を含む。写真はまだないので持たせない)', () => {
+  it('一覧の項目をカード表示用にする(いいね数と、代表の写真の URL を含む)', () => {
     expect(toCardSpot(item(3, { likeCount: 12 }))).toEqual({
       id: 3,
       name: 'spot-3',
       areas: ['京都府'],
       visibility: 'public',
       authorName: 'はるか',
+      coverPhotoUrl: null,
       likes: 12,
     })
   })
@@ -134,5 +138,14 @@ describe('mergeNearby', () => {
   it('該当がなければ空', () => {
     expect(mergeNearby([[item(1)], []], 1)).toEqual([])
     expect(mergeNearby([], 1)).toEqual([])
+  })
+})
+
+describe('toCardSpot(写真)', () => {
+  it('代表の写真の URL を、カードに渡す(なければ null)', () => {
+    expect(toCardSpot(item(1)).coverPhotoUrl).toBeNull()
+    expect(toCardSpot(item(1, { coverPhotoUrl: 'https://example.com/a.jpg' })).coverPhotoUrl).toBe(
+      'https://example.com/a.jpg',
+    )
   })
 })

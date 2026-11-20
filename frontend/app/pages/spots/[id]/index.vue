@@ -181,6 +181,8 @@ watch(id, load, { immediate: true })
         </p>
       </div>
 
+      <SpotPhotos :photos="spot.photos" :name="spot.name" />
+
       <p
         v-if="spot.review"
         class="whitespace-pre-wrap"

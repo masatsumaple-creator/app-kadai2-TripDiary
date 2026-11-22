@@ -12,7 +12,7 @@ infra/**/.terraform/
 infra/**/*.tfstate
 infra/**/*.tfstate.*
 infra/**/*.tfplan
-infra/**/tfplan
+infra/**/tfplan*
 infra/backend.hcl
 infra/**/*.tfvars
 !infra/**/*.tfvars.example

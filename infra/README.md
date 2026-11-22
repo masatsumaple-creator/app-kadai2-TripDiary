@@ -123,4 +123,4 @@ aws s3api list-buckets --query "Buckets[?starts_with(Name, 'tripdiary-')].Name" 
 
 (同じアカウントに RaiseTimeLine の `raisetimeline-*` のバケットがあるが、これは対象外。)
 
-state のバケット(`bootstrap/`)は、数円/月なので、通常は残す。完全に片付けるときは、バケットの中身(バージョンを含む)を空にしてから、`cd infra/bootstrap && terraform destroy` を実行する。
+state のバケット(`bootstrap/`)は、数円/月なので、通常は残す。**完全に片付けるときは**(2026-11-22 に実施済み): `terraform destroy` で、リソースをすべて消してから、`node scripts/empty-tfstate-bucket.mjs <バケット名>` で、バケットの中身(state の古い版を含む)を空にし、`cd bootstrap && terraform destroy` でバケットを消す(詳しくは `docs/23_運用手順書.md` の「消す」)。
